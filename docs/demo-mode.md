@@ -100,3 +100,13 @@ The system formally supports **EXACTLY TWO** mutually isolated operational modes
 - **Live Database Invariant:** The live database table `alerts` remains strictly at 0 rows until authentic matches are processed.
 - **Performance Invariant:** Alert generation throughput and deduplication latency are explicitly reported as `Alert performance: NOT BENCHMARKED` until verified benchmarks are conducted.
 
+---
+
+## 9. Vehicle History Data Fidelity & Provenance
+
+- **`is_demo` Provenance Preservation:** Every historical observation item returned in `VehicleObservationItem` preserves the `is_demo` flag from the underlying `Detection` entity. Demo observations are never disguised as live Sentinel Gujarat Police surveillance history.
+- **Zero History Fabrication:** When a plate search matches no persisted detections in the database, the API returns a truthful empty response (`total_observations: 0`, `items: []`). No synthetic observations, mock camera sightings, or fabricated route timestamps are generated.
+- **Missing Coordinate Invariant:** Unmapped cameras or missing registry coordinates serialize strictly as `null` and are never replaced with placeholder coordinates like `(0.0, 0.0)`.
+- **Performance Invariant:** Vehicle history retrieval throughput is reported strictly as `Vehicle history performance: NOT BENCHMARKED` until formal database load tests are conducted.
+
+

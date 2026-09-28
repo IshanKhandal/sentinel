@@ -278,7 +278,9 @@ The schema is organized into 6 logical domains designed to avoid redundancy whil
   - `idx_alerts_plate` ON (`plate_number`)
   - `idx_alerts_camera` ON (`camera_id`)
 - **Stage 10 Implementation Status:** VERIFIED WORKING. Alert entities are generated deterministically from Stage 9 watchlist matches with default status `NEW` and severity inherited from `Watchlist.severity`. Symmetrical 60-second observation suppression window enforced per `(camera_id, plate_number, watchlist_entry_id)`.
-- **Stage 11 Boundary Invariant:** Stage 10 creates and manages alert lifecycle; cross-camera historical trajectory reconstruction and journey correlation belong strictly to Stage 11.
+- **Stage 11 Implementation Status:** VERIFIED WORKING. Vehicle observation history queries utilize `idx_detections_plate_time` ON (`plate_number`, `detected_at`), joined with camera and location registries. Strict observation timestamp ordering with `Detection.id` tie-breaking is enforced.
+- **Stage 12 Boundary Invariant:** Stage 11 provides chronological observation history only; cross-camera trajectory reconstruction, graph correlation, and velocity estimation belong strictly to Stage 12.
+
 
 ---
 

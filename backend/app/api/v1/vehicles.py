@@ -1,0 +1,118 @@
+"""Vehicle profile and chronological observation history REST API endpoints.
+
+Protocol Standards:
+- docs/api-contract.md Section 7 (Vehicles & Journey).
+- Stage 11 Directive Sections 2-25.
+- RFC 7807 compliant error responses.
+- STRICT ISOLATION: No route reconstruction or speed inference (reserved for Stage 12).
+"""
+
+import uuid
+from datetime import datetime
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from backend.app.db.session import get_db
+from backend.app.schemas.vehicle import (
+    VehicleProfileRead,
+    VehicleHistoryResponse,
+    VehicleQueryWindow,
+)
+from backend.app.services.vehicle import (
+    VehicleService,
+    VehicleNotFoundError,
+    VehicleHistoryValidationError,
+)
+
+router = APIRouter(prefix="/vehicles", tags=["vehicles"])
+
+
+@router.get("/{plate_number}", response_model=VehicleProfileRead)
+def get_vehicle_profile(
+    plate_number: str,
+    db: Session = Depends(get_db)
+) -> VehicleProfileRead:
+    """Retrieve canonical vehicle profile, observation statistics, and active watchlist status.
+    
+    Contract: docs/api-contract.md Section 7 (`GET /api/v1/vehicles/{plate_number}`).
+    """
+    clean_plate = plate_number.strip().upper()
+    try:
+        profile = VehicleService.get_vehicle_profile(db=db, plate_number=clean_plate)
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Vehicle '{clean_plate}' not found."
+            )
+        return profile
+    except VehicleHistoryValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        ) from exc
+
+
+@router.get("/{plate_number}/history", response_model=VehicleHistoryResponse)
+def get_vehicle_history(
+    plate_number: str,
+    start_time: Optional[datetime] = Query(default=None, description="Start observation timestamp filter (ISO 8601 UTC)"),
+    end_time: Optional[datetime] = Query(default=None, description="End observation timestamp filter (ISO 8601 UTC)"),
+    camera_id: Optional[uuid.UUID] = Query(default=None, description="Filter observations by specific camera UUID"),
+    order: str = Query(default="asc", pattern="^(asc|desc|ASC|DESC)$", description="Sort order: 'asc' (chronological) or 'desc' (latest first)"),
+    limit: int = Query(default=50, ge=1, le=200, description="Page limit (max 200)"),
+    skip: int = Query(default=0, ge=0, description="Offset pagination"),
+    db: Session = Depends(get_db)
+) -> VehicleHistoryResponse:
+    """Query chronological observation history for a license plate.
+    
+    Strict Invariants (Stage 11 Directive):
+    - Reads persisted detections only (does not scan video streams).
+    - Preserves authoritative observation timestamp from video PTS.
+    - Resolves camera and location metadata from camera registry.
+    - Unknown or unmapped coordinates returned as None (NEVER 0,0).
+    - Empty searches return truthful empty result (200 OK with total=0, items=[]).
+    - STRICTLY NO route reconstruction, speed estimation, or trajectory inference.
+    """
+    clean_plate = plate_number.strip().upper()
+    try:
+        items, total = VehicleService.get_vehicle_history(
+            db=db,
+            plate_number=clean_plate,
+            start_time=start_time,
+            end_time=end_time,
+            camera_id=camera_id,
+            order=order.lower(),
+            limit=limit,
+            skip=skip,
+        )
+
+        return VehicleHistoryResponse(
+            plate_number=clean_plate,
+            total_observations=total,
+            query_window=VehicleQueryWindow(
+                start_time=start_time,
+                end_time=end_time,
+            ),
+            limit=limit,
+            skip=skip,
+            items=items,
+        )
+    except VehicleHistoryValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        ) from exc
+
+
+@router.get("/{plate_number}/journey", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+def get_vehicle_journey(plate_number: str):
+    """Placeholder enforcing Stage 11 strict boundary.
+    
+    Trajectory reconstruction and inter-camera velocity estimation are reserved
+    strictly for Stage 12 (Cross-Camera Correlation).
+    """
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Cross-camera trajectory reconstruction and route correlation are reserved for Stage 12."
+    )

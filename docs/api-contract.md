@@ -182,7 +182,8 @@ All non-2xx responses follow this uniform structure:
 ## 7. Vehicles & Journey
 
 ### `GET /api/v1/vehicles/{plate_number}`
-- **Purpose:** Retrieve vehicle profile, summary stats, and observation frequency.
+- **Purpose:** Retrieve vehicle profile, summary stats, observation frequency, and active watchlist enrollment status.
+- **Status:** `VERIFIED WORKING` (Stage 11).
 - **Response (200 OK):**
   ```json
   {
@@ -198,37 +199,63 @@ All non-2xx responses follow this uniform structure:
   ```
 - **Error Responses:** 404 Not Found (`VEHICLE_NOT_FOUND`).
 
-### `GET /api/v1/vehicles/{plate_number}/journey`
-- **Purpose:** Retrieve cross-camera sequential trajectory for route reconstruction.
-- **Query Params:** `start_time` (ISO), `end_time` (ISO).
+### `GET /api/v1/vehicles/{plate_number}/history`
+- **Purpose:** Query chronological observation history for a searched license plate across all camera locations.
+- **Status:** `VERIFIED WORKING` (Stage 11).
+- **Query Params:**
+  - `start_time` (optional, ISO 8601 UTC timestamp filter)
+  - `end_time` (optional, ISO 8601 UTC timestamp filter)
+  - `camera_id` (optional, filter by camera UUID)
+  - `order` (`asc` default for earliest-to-latest chronological timeline, `desc` for latest first; secondary deterministic tie-breaking on `detection.id`)
+  - `limit` (default: 50, ge=1, le=200)
+  - `skip` (default: 0, ge=0)
 - **Response (200 OK):**
   ```json
   {
     "plate_number": "GJ01AB1234",
-    "query_window": { "start": "2026-09-28T00:00:00Z", "end": "2026-09-28T23:59:59Z" },
-    "waypoints_count": 3,
-    "waypoints": [
+    "total_observations": 14,
+    "query_window": {
+      "start_time": "2026-09-20T00:00:00Z",
+      "end_time": "2026-09-28T23:59:59Z"
+    },
+    "limit": 50,
+    "skip": 0,
+    "items": [
       {
-        "sequence": 1,
+        "detection_id": "d1e2f3a4-0000-0000-0000-000000000001",
         "camera_id": "c1a2b3c4-0000-0000-0000-000000000001",
-        "camera_name": "Junction 01 - SG Highway",
-        "latitude": 23.0450,
-        "longitude": 72.5200,
-        "detected_at": "2026-09-28T14:10:00Z",
-        "snapshot_url": "/media/detections/...jpg"
-      },
-      {
-        "sequence": 2,
-        "camera_id": "c1a2b3c4-0000-0000-0000-000000000002",
         "camera_name": "Junction 04 - Ashram Road",
+        "location_id": "l1a2b3c4-0000-0000-0000-000000000001",
+        "location_name": "Ashram Road Junction",
         "latitude": 23.0305,
         "longitude": 72.5714,
-        "detected_at": "2026-09-28T14:28:00Z",
-        "implied_speed_kmh": 42.5
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "detected_at": "2026-09-28T17:45:12Z",
+        "video_pts_ms": 10000.0,
+        "vehicle_type": "CAR",
+        "confidence_vehicle": 0.94,
+        "confidence_plate": 0.88,
+        "plate_number": "GJ01AB1234",
+        "raw_text": "GJ 01 AB 1234",
+        "snapshot_path": "snapshots/cam01/10000.jpg",
+        "plate_crop_path": null,
+        "is_demo": true,
+        "detection_metadata": { "video_pts_ms": 10000.0, "frame_index": 100 },
+        "created_at": "2026-09-28T17:45:13Z"
       }
     ]
   }
   ```
+- **Empty Result Semantics:** Returns 200 OK with `total_observations: 0` and `items: []`. Does NOT fabricate demo records or historical events.
+- **Missing Data Semantics:** If camera or location is unmapped or coordinates are unavailable, `latitude` and `longitude` are returned as `null` (NEVER placeholder `0,0`).
+- **No Route Inference Guarantee:** Returns observations only. Does NOT infer travel paths, speed, estimated travel time, or next-camera transitions.
+- **Validation:** `start_time` must be prior to `end_time` (returns 400 Bad Request otherwise).
+
+### `GET /api/v1/vehicles/{plate_number}/journey`
+- **Purpose:** Cross-camera sequential trajectory reconstruction and velocity estimation.
+- **Status:** `NOT IMPLEMENTED — RESERVED FOR STAGE 12` (Returns HTTP 501 Not Implemented).
+- **Boundary Invariant:** Trajectory graph correlation, route inference, and travel speed calculation are deferred strictly to Stage 12.
 
 ---
 

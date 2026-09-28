@@ -25,6 +25,13 @@ from backend.app.schemas.alert import (
     AlertEngineResult,
 )
 
+from backend.app.schemas.vehicle import (
+    VehicleProfileRead,
+    VehicleObservationItem,
+    VehicleHistoryResponse,
+    VehicleQueryWindow,
+)
+
 __all__ = [
     "WatchlistCategory",
     "WatchlistSeverity",
@@ -45,4 +52,8 @@ __all__ = [
     "AlertAcknowledgeRequest",
     "AlertStatusUpdateRequest",
     "AlertEngineResult",
+    "VehicleProfileRead",
+    "VehicleObservationItem",
+    "VehicleHistoryResponse",
+    "VehicleQueryWindow",
 ]

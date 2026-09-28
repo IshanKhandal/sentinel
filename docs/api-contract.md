@@ -399,20 +399,64 @@ All non-2xx responses follow this uniform structure:
 
 ### `POST /api/v1/investigations`
 - **Purpose:** Create an investigative case dossier.
-- **Request Body:** `{ "case_number", "title", "description", "target_plate" }`.
-- **Response (201 Created):** Created case file.
+- **Status:** `IMPLEMENTED (Stage 13 Investigation Engine)`
+- **Request Body:** `{ "case_number": "FIR-2026-AHM-001", "title": "Suspect Tracking", "description": "...", "target_plate": "GJ01AB1234", "lead_detective_id": "optional-uuid" }`
+- **Response (201 Created):** `InvestigationRead` entity.
+- **Audit Logging:** Mandated action `INVESTIGATION_CREATE`.
+
+### `GET /api/v1/investigations`
+- **Purpose:** Search and list investigation cases with pagination.
+- **Query Params:** `status` (`OPEN`, `IN_PROGRESS`, `CLOSED`, `ARCHIVED`), `target_plate`, `case_number`, `limit`, `skip`.
+- **Response (200 OK):** `InvestigationListResponse` with count and list of case summaries.
+
+### `GET /api/v1/investigations/{investigation_id}`
+- **Purpose:** Retrieve single investigation case with attached event timeline and registered evidence items.
+- **Response (200 OK):** `InvestigationRead` entity.
+
+### `PATCH /api/v1/investigations/{investigation_id}`
+- **Purpose:** Update case details or progress lifecycle status.
+- **Request Body:** `{ "title": "...", "description": "...", "target_plate": "...", "status": "IN_PROGRESS", "lead_detective_id": "..." }`
+- **Response (200 OK):** Updated `InvestigationRead` entity.
+- **Audit Logging:** Mandated actions `INVESTIGATION_UPDATE`, `INVESTIGATION_STATUS_CHANGE`.
+
+### `POST /api/v1/investigations/{investigation_id}/events`
+- **Purpose:** Tag and attach an existing detection or alert to the case timeline.
+- **Request Body:** `{ "detection_id": "uuid", "alert_id": "optional-uuid", "notes": "Observed near crime scene" }`
+- **Response (201 Created):** `InvestigationEventRead` entity with monotonic `sequence_order`.
+- **Audit Logging:** Mandated action `INVESTIGATION_EVENT_ATTACH`.
+
+### `GET /api/v1/investigations/{investigation_id}/events`
+- **Purpose:** Retrieve all events attached to an investigation ordered chronologically by observation time.
+- **Response (200 OK):** Array of `InvestigationEventRead` entities.
+
+### `DELETE /api/v1/investigations/{investigation_id}/events/{event_id}`
+- **Purpose:** Detach an event reference from an investigation.
+- **Response (204 No Content):** Event removed.
+- **Audit Logging:** Mandated action `INVESTIGATION_EVENT_DETACH`.
+
+### `POST /api/v1/investigations/{investigation_id}/attach-history`
+- **Purpose:** Attach verified historical vehicle observations from Stage 11 for the target plate or explicit detection IDs.
+- **Request Body:** `{ "detection_ids": ["uuid", ...], "notes": "Attached from historical sightings" }`
+- **Response (201 Created):** Array of attached `InvestigationEventRead` entities.
+
+### `GET /api/v1/investigations/{investigation_id}/correlation`
+- **Purpose:** Retrieve Stage 12 cross-camera correlation output for the investigation's target plate without recalculating GIS/spatial graph.
+- **Query Params:** `start_time`, `end_time`, `max_speed_kmh`.
+- **Response (200 OK):** `VehicleJourneyResponse`.
+
+### `POST /api/v1/investigations/{investigation_id}/evidence`
+- **Purpose:** Register verified digital evidence asset metadata with cryptographic SHA-256 hash.
+- **Request Body:** `{ "file_path": "evidence/FIR-01.pdf", "file_type": "PDF_DOSSIER", "sha256_hash": "...", "file_size_bytes": 1048576 }`
+- **Response (201 Created):** `EvidenceRead` entity.
+- **Audit Logging:** Mandated action `INVESTIGATION_EVIDENCE_ATTACH`.
+
+### `GET /api/v1/investigations/{investigation_id}/evidence`
+- **Purpose:** List registered evidence assets for an investigation case.
+- **Response (200 OK):** Array of `EvidenceRead` entities.
 
 ### `POST /api/v1/investigations/{investigation_id}/export`
 - **Purpose:** Generate and download a cryptographic PDF/ZIP evidence package.
-- **Response (200 OK):**
-  ```json
-  {
-    "evidence_id": "e1f2a3b4-0000-0000-0000-000000000001",
-    "download_url": "/api/v1/evidence/download/e1f2a3b4",
-    "sha256_hash": "a4f91b7e45c6d3e8...",
-    "file_size_bytes": 4821040
-  }
-  ```
+- **Status:** `EVIDENCE EXPORT NOT IMPLEMENTED` (Returns HTTP 501 Not Implemented; cryptographic packaging and file rendering are reserved for the export engine).
 
 ---
 

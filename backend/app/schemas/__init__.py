@@ -32,6 +32,19 @@ from backend.app.schemas.vehicle import (
     VehicleQueryWindow,
 )
 
+from backend.app.schemas.investigation import (
+    InvestigationCreate,
+    InvestigationUpdate,
+    InvestigationRead,
+    InvestigationListResponse,
+    InvestigationEventCreate,
+    InvestigationEventRead,
+    EvidenceCreate,
+    EvidenceRead,
+    AttachVehicleHistoryRequest,
+    AttachAlertRequest,
+)
+
 __all__ = [
     "WatchlistCategory",
     "WatchlistSeverity",
@@ -56,4 +69,14 @@ __all__ = [
     "VehicleObservationItem",
     "VehicleHistoryResponse",
     "VehicleQueryWindow",
+    "InvestigationCreate",
+    "InvestigationUpdate",
+    "InvestigationRead",
+    "InvestigationListResponse",
+    "InvestigationEventCreate",
+    "InvestigationEventRead",
+    "EvidenceCreate",
+    "EvidenceRead",
+    "AttachVehicleHistoryRequest",
+    "AttachAlertRequest",
 ]

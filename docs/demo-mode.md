@@ -119,5 +119,16 @@ The system formally supports **EXACTLY TWO** mutually isolated operational modes
 - **Empty History Fidelity:** If a plate has never been detected, the journey endpoint returns `correlation_status: "INSUFFICIENT_DATA"` with 0 waypoints and 0 transitions.
 - **Performance Invariant:** Multi-camera graph traversal and trajectory correlation throughput are explicitly reported as `Correlation performance: NOT BENCHMARKED` until formal benchmarks are conducted.
 
+---
+
+## 11. Investigation Engine Data Fidelity & Provenance
+
+- **`is_demo` Event Provenance:** When observations or alerts originating from DEMO mode or test fixtures are attached to an investigation, `InvestigationEventRead.is_demo` remains `True`. Synthetic events are never disguised as real police intelligence.
+- **Zero Case File Pre-Seeding:** The production tables `investigations`, `investigation_events`, and `evidence` remain at 0 rows until authorized officers open real case files. No synthetic criminal case files or fabricated investigations are pre-populated.
+- **Zero Evidence File Fabrication:** Digital evidence metadata requires genuine file paths and cryptographic SHA-256 hashes. Creating fake evidence files or fabricated cryptographic hashes is strictly prohibited.
+- **Evidence Export Reservation:** Cryptographic evidence export (ZIP/PDF dossier) is reserved for the export engine and returns `EVIDENCE EXPORT NOT IMPLEMENTED` (HTTP 501).
+- **Performance Invariant:** Investigation graph retrieval and case timeline indexing are explicitly reported as `Investigation performance: NOT BENCHMARKED` until formal database load tests are conducted.
+
+
 
 

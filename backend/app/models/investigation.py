@@ -82,6 +82,8 @@ class InvestigationEvent(Base):
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     investigation: Mapped["Investigation"] = relationship("Investigation", back_populates="events")
+    detection: Mapped[Optional["Detection"]] = relationship("Detection")
+    alert: Mapped[Optional["Alert"]] = relationship("Alert")
 
 
 class Evidence(Base):

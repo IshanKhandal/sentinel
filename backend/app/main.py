@@ -14,6 +14,7 @@ from backend.app.api.v1.detections import router as detections_router
 from backend.app.api.v1.watchlists import router as watchlists_router
 from backend.app.api.v1.alerts import router as alerts_router
 from backend.app.api.v1.vehicles import router as vehicles_router
+from backend.app.api.v1.investigations import router as investigations_router
 from backend.app.services.streaming.manager import stream_manager
 
 
@@ -43,6 +44,7 @@ app.include_router(detections_router, prefix="/api/v1")
 app.include_router(watchlists_router, prefix="/api/v1")
 app.include_router(alerts_router, prefix="/api/v1")
 app.include_router(vehicles_router, prefix="/api/v1")
+app.include_router(investigations_router, prefix="/api/v1")
 
 
 

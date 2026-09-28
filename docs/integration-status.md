@@ -45,6 +45,8 @@
 | Vehicle History Performance Benchmark | History query response latency and index scan throughput under load | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | Unbenchmarked local prototype; adheres strictly to Rule 10 | Benchmark dataset/harness unconfigured |
 | Cross-Camera Correlation Engine | Sequential waypoint aggregation, Haversine inter-camera distances, velocity plausibility (>180 km/h anomaly) | `backend/app/services/correlation/service.py`, `backend/app/api/v1/vehicles.py` | YES | Internal Service (`GET /api/v1/vehicles/{plate}/journey`) | Application context | VERIFIED WORKING | 12 unit/API tests passing; same-camera aggregation, points-only GeoJSON, coordinate preservation (no 0,0) verified | None |
 | Correlation Performance Benchmark | Multi-camera graph correlation and trajectory query latency under load | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | Unbenchmarked local prototype; adheres strictly to Rule 10 | Benchmark dataset/harness unconfigured |
+| Investigation Dossier Engine | Case management, detection/alert attachment, evidence metadata registration, lifecycle transitions | `backend/app/services/investigation/service.py`, `backend/app/api/v1/investigations.py` | YES | Internal Service (`/api/v1/investigations`) | Application context | VERIFIED WORKING | 16 unit/API tests passing; case CRUD, monotonic events, audit logging, evidence metadata verified | None |
+| Investigation Performance Benchmark | Case timeline graph retrieval and event association latency under load | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | Unbenchmarked local prototype; adheres strictly to Rule 10 | Benchmark dataset/harness unconfigured |
 
 
 

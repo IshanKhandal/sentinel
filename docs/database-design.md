@@ -328,6 +328,7 @@ The schema is organized into 6 logical domains designed to avoid redundancy whil
   - `created_at`: `TIMESTAMPTZ` (Default: `CURRENT_TIMESTAMP`)
 - **Indexes:**
   - `idx_evidence_inv` ON (`investigation_id`)
+- **Stage 13 Implementation Status:** VERIFIED WORKING. Investigation case files, event attachments (joined with Detection and Alert records), evidence metadata registration, and lifecycle status progression are fully implemented and verified via automated tests. Cryptographic PDF/ZIP export is reserved for the export engine and guarded by HTTP 501.
 
 ---
 

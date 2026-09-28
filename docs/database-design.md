@@ -358,4 +358,6 @@ The schema is organized into 6 logical domains designed to avoid redundancy whil
 1. `c1a5639ce6ba` — Initial schema creation (all core tables, foreign keys, and indexes).
 2. `f1a891746c72` — Add `raw_text` and `detection_metadata` columns to `detections` table (Stage 8 Event Persistence).
 3. `a7c8e9d01234` — Alter `locations.latitude` and `locations.longitude` to `nullable=True` to support unmapped camera sites without coordinate fabrication (Stage 12 Cross-Camera Correlation).
+4. `b8d9e0f12345` — Alter `detections.confidence_vehicle` column to `nullable=True` to allow null confidence when vehicle detector score is unavailable.
+
 

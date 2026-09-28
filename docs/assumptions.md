@@ -14,6 +14,9 @@
 | ASM-006 | 2026-09-28 | Cross-Dialect Primary Key Typing | Using `BigInteger().with_variant(Integer, "sqlite")` enables SQLite to treat `id` as an autoincrementing ROWID alias while producing standard 64-bit BIGINT / BIGSERIAL on PostgreSQL. | Confirmed by SQLAlchemy 2.0 dialect specification and verified by automated CRUD test suite. | Low | VERIFIED |
 | ASM-007 | 2026-09-28 | Official CCTV Integration Invariants | All cameras in the official Sentinel environment publish via RTSP (:8554), WebRTC/WHEP (:8889), and HLS; catalogue discovery via `GET /api/ingest` is the authoritative source for stream parameters. | Confirmed by official Sentinel technical contract provided in Phase 3 instructions. | Low | VERIFIED SPECIFICATION |
 | ASM-008 | 2026-09-28 | Stream Host Provisioning | The actual stream host IP/domain is not provided in repository files or environment variables; the application must keep `SENTINEL_STREAM_HOST` unconfigured until supplied by organizers. | Confirmed by recursive file and environment search returning zero host matches. | Medium | VERIFIED (MARKED BLOCKED) |
+| ASM-009 | 2026-09-28 | Leaflet Tile Provider Fallback | Public OpenStreetMap tiles (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`) are used as development-safe default without commercial API keys. Tile load errors are explicitly caught and surfaced as `MAP TILES UNAVAILABLE`. | Required by Rule 18 & 19; confirmed by absence of commercial tile credentials. | Low | VERIFIED |
+| ASM-010 | 2026-09-28 | Zero Synthetic GIS Points in Database | The production SQLite/PostgreSQL database strictly contains 0 synthetic GIS coordinates. Cameras without verified coordinates from `/api/ingest` remain `UNMAPPED` and are omitted from GeoJSON features. | Required by Phase 4 Rule 3 & 25; verified by `sentinel.db` camera row count (0 rows). | Low | VERIFIED |
+
 
 ---
 

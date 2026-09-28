@@ -48,3 +48,16 @@ The system formally supports **EXACTLY TWO** mutually isolated operational modes
 - **Backend Flag:** `SENTINEL_OPERATION_MODE=DEMO` vs `SENTINEL_OPERATION_MODE=LIVE`.
 - **Directory Isolation:** All mock datasets, video loops, and synthetic generator scripts reside strictly under `tests/fixtures/` and `src/mock/`.
 - **Fail-Safe Guard:** Under `SENTINEL_OPERATION_MODE=LIVE`, all mock generator modules are completely bypassed and deactivated. An unconfigured live resource throws an explicit `IntegrationUnavailableException`.
+
+---
+
+## 4. GIS & Map Data Fidelity Rules
+
+- **Zero Coordinate Hallucination:** A camera without verified latitude/longitude from the official catalogue must NEVER be placed on the map (no (0, 0), no Gujarat geographic center, no fake police stations).
+- **Map Badge Statuses:**
+  - `EMPTY (0 MAPPED)`: Default state when the camera registry has no cameras with verified GPS coordinates.
+  - `DEMO DATA`: Displayed only when synthetic fixtures are explicitly loaded in testing or demo runs.
+  - `MAP TILES UNAVAILABLE`: Displayed when network connection to the tile server fails or times out.
+  - `LIVE DATA`: Displayed only when verified camera coordinates from the official Sentinel catalogue are actively plotted.
+- **Unmapped Camera Drawer:** Cameras lacking verified coordinates are explicitly listed in an "Unmapped Cameras" panel with their ID and reason (`No verified coordinates`), ensuring operator visibility without geographic fabrication.
+

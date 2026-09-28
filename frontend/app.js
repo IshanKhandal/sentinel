@@ -94,9 +94,38 @@ const App = {
           modeBadge.className = "badge-pill mode-demo";
           modeText.textContent = "DEMO MODE";
         }
-        document.getElementById("footer-version").textContent = health.app_version || "v1.0.0";
+        document.getElementById("footer-version").textContent = health.app_version || "v1.7.0";
       } catch (e) {
         console.warn("Could not fetch system health:", e);
+      }
+
+      // Check first-class data sources
+      try {
+        const ds = await App.api.get("/api/v1/system/data-sources");
+        App.state.dataSources = ds;
+        const bName = document.getElementById("banner-source-name");
+        if (bName) bName.textContent = ds.active_source_label || "DEMO: Synthetic Validation Dataset";
+        const bBadge = document.getElementById("banner-active-source-badge");
+        if (bBadge) {
+          if (ds.active_source === "SENTINEL_LIVE") {
+            bBadge.className = "source-tag source-live";
+          } else {
+            bBadge.className = "source-tag source-demo";
+          }
+        }
+        const sLive = document.getElementById("banner-sentinel-live-status");
+        if (sLive) {
+          const isAvail = ds.sentinel_live?.status === "AVAILABLE";
+          sLive.textContent = isAvail ? "AVAILABLE" : "BLOCKED / UNAVAILABLE";
+          sLive.className = `status-indicator-badge ${isAvail ? "status-passed" : "status-blocked"}`;
+        }
+        const sCustom = document.getElementById("banner-custom-dataset-status");
+        if (sCustom) {
+          sCustom.textContent = ds.custom_dataset?.status || "NOT PROVIDED";
+          sCustom.className = "status-indicator-badge status-notprovided";
+        }
+      } catch (e) {
+        console.warn("Could not fetch data sources:", e);
       }
 
       // Check stored JWT token
@@ -718,8 +747,9 @@ const App = {
         html += `
           <div class="journey-node ${isFirst ? 'first' : ''} ${isLast && !isFirst ? 'last' : ''}">
             <div class="node-cam">${item.camera_name || `Camera #${i + 1}`}</div>
-            <div style="font-size: 10px; color: var(--text-subtle);">${item.city || "Gujarat Sector"}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${item.city || "Gujarat Sector"}</div>
             <div class="node-time">${App.ui.formatTime(item.timestamp || item.detected_at)}</div>
+            <div class="node-source"><span class="source-tag ${item.is_demo !== false ? 'source-demo' : 'source-live'}"><span class="dot"></span> ${item.is_demo !== false ? 'DEMO: Synthetic' : 'LIVE: Sentinel'}</span></div>
           </div>
         `;
 
@@ -749,7 +779,7 @@ const App = {
           <td><strong>${o.camera_name || o.camera_id}</strong></td>
           <td>${o.location_name || o.city || "Gujarat Highway Sector"}</td>
           <td>${Math.round((o.confidence_vehicle || 0.95) * 100)}% / ${Math.round((o.confidence_plate || 0.92) * 100)}%</td>
-          <td><span class="badge-pill mode-demo" style="font-size: 9px;">${o.detection_source || "DEMO"}</span></td>
+          <td><span class="source-tag ${o.is_demo !== false ? 'source-demo' : 'source-live'}"><span class="dot"></span> ${o.is_demo !== false ? 'DEMO' : 'LIVE'}</span></td>
         </tr>
       `).join("");
     },
@@ -823,12 +853,12 @@ const App = {
       tbody.innerHTML = items.map((d) => `
         <tr>
           <td style="font-family: var(--font-mono); font-size: 11px;">${App.ui.formatTime(d.detected_at)}</td>
-          <td><span class="plate-badge">${d.plate_number || "NO PLATE"}</span></td>
+          <td><span class="plate-tag">${d.plate_number || "NO PLATE"}</span></td>
           <td style="text-transform: capitalize;">${d.vehicle_type || "Car"}</td>
           <td>${Math.round((d.confidence_vehicle || 0.95) * 100)}%</td>
           <td>${Math.round((d.confidence_plate || 0.92) * 100)}%</td>
           <td>${d.camera_name || d.camera_id?.slice(0, 8) || "Sector Cam"}</td>
-          <td><span class="badge-pill mode-demo" style="font-size: 9px;">${d.is_demo ? "DEMO" : "LIVE"}</span></td>
+          <td><span class="source-tag ${d.is_demo !== false ? 'source-demo' : 'source-live'}"><span class="dot"></span> ${d.is_demo !== false ? 'DEMO' : 'LIVE'}</span></td>
         </tr>
       `).join("");
     },
@@ -1071,14 +1101,14 @@ const App = {
 
       tbody.innerHTML = items.map((inv) => `
         <tr>
-          <td><strong style="color: var(--cyan-primary); font-family: var(--font-mono);">${inv.case_number}</strong></td>
-          <td><strong style="color: #fff;">${inv.title}</strong></td>
-          <td>${inv.target_plate ? `<span class="plate-badge">${inv.target_plate}</span>` : '<span style="color: var(--text-subtle);">None</span>'}</td>
-          <td><span class="badge-pill mode-demo" style="font-size: 9px;">${inv.status}</span></td>
+          <td><strong style="color: var(--blue-primary); font-family: var(--font-mono);">${inv.case_number}</strong></td>
+          <td><strong style="color: var(--text-primary);">${inv.title}</strong></td>
+          <td>${inv.target_plate ? `<span class="plate-tag">${inv.target_plate}</span>` : '<span style="color: var(--text-muted);">None</span>'}</td>
+          <td><span class="status-chip chip-demo"><span class="dot"></span> ${inv.status}</span></td>
           <td>${inv.lead_detective_name || inv.lead_detective_id?.slice(0, 8) || "Detective"}</td>
           <td style="font-family: var(--font-mono); font-size: 11px;">${App.ui.formatTime(inv.created_at)}</td>
           <td>
-            <button class="btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="App.investigations.inspectCase('${inv.id}')">Open Case File</button>
+            <button class="btn-secondary" style="padding: 3px 10px; font-size: 11px;" onclick="App.investigations.inspectCase('${inv.id}')">Open Case File</button>
           </td>
         </tr>
       `).join("");
@@ -1147,8 +1177,8 @@ const App = {
       tbody.innerHTML = items.map((l) => `
         <tr>
           <td style="font-family: var(--font-mono); font-size: 11px;">${App.ui.formatTime(l.created_at)}</td>
-          <td><strong style="color: var(--cyan-primary); font-family: var(--font-mono);">${l.badge_number || "SYSTEM"}</strong></td>
-          <td><span class="badge-pill" style="background: rgba(30, 41, 59, 0.5); color: #fff; font-size: 10px;">${l.action}</span></td>
+          <td><strong style="color: var(--blue-primary); font-family: var(--font-mono);">${l.badge_number || "SYSTEM"}</strong></td>
+          <td><span class="status-chip" style="background: var(--bg-surface-alt); color: var(--text-secondary); border: 1px solid var(--border-medium); font-size: 10px;">${l.action}</span></td>
           <td>${l.resource_type || "SYSTEM"}</td>
           <td style="font-family: var(--font-mono); font-size: 11px;">${l.ip_address || "127.0.0.1"}</td>
           <td style="font-size: 11px; color: var(--text-muted);">${l.payload_summary || "--"}</td>
@@ -1251,6 +1281,10 @@ const App = {
 
     showLoginModal() {
       this.showModal("modal-login");
+    },
+
+    showDataSourceReport() {
+      this.showModal("modal-data-source-report");
     },
 
     showNewInvestigationModal() {

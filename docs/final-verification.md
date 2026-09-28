@@ -3,7 +3,7 @@
 > **Document Status:** FINAL ARCHITECTURE & E2E VERIFICATION (Stages 16 & 17 Complete)  
 > **Evaluation Date:** September 29, 2026  
 > **Platform Standard:** Evidence-First & Non-Hallucination Engineering Rules ([docs/engineering-rules.md](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/docs/engineering-rules.md))  
-> **Total Test Assertions:** 237 Passing Tests across 18 Test Suites (0 Failures, 0 Regressions)
+> **Total Test Assertions:** 238 Passing Tests across 18 Test Suites (0 Failures, 0 Regressions)
 
 ---
 
@@ -18,7 +18,7 @@ The **Sentinel Gujarat AI-Powered Smart CCTV Surveillance Platform** has complet
 - Structured investigation case dossiers with cryptographic evidence registration (SHA-256)
 - Realtime WebSocket push notification gateway with backpressure handling and priority alert delivery
 - Enterprise Security & RBAC: Bcrypt password hashing (cost 12), stateless HS256 JWT, 4-tier roles, fine-grained endpoint clearances, and append-only audit logging
-- Tactical Command Web Interface (`frontend/`): Responsive dark-mode console consuming authentic backend APIs with transparent multi-state indicators (`LIVE`, `DEMO`, `OFFLINE`, `UNAVAILABLE`, `UNKNOWN`) and offline GIS fallback.
+- Tactical Command Web Interface (`frontend/`): Responsive, polished, light-themed modern police command-center console consuming authentic backend APIs with transparent data source provenance ribbon (`SENTINEL_LIVE`, `SENTINEL_TEST`, `CUSTOM_DATASET`, `DEMO`, `TEST`), clear status indicators (`LIVE`, `DEMO`, `OFFLINE`, `UNAVAILABLE`, `UNKNOWN`), and offline GIS fallback.
 
 ---
 
@@ -94,30 +94,30 @@ platform win32 -- Python 3.14.3, pytest-9.1.1, pluggy-1.6.0
 rootdir: C:\Users\ishan\sentinel gujarat hackathon
 plugins: anyio-4.13.0, langsmith-0.10.15, asyncio-1.4.0
 asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-collected 237 items
+collected 238 items
 
 backend\tests\test_alert_engine.py .........                             [  3%]
 backend\tests\test_anpr.py .....................                         [ 12%]
 backend\tests\test_camera_api.py ....                                    [ 14%]
-backend\tests\test_camera_registry.py ....                               [ 16%]
+backend\tests\test_camera_registry.py ....                               [ 15%]
 backend\tests\test_catalogue_client.py .......                           [ 18%]
-backend\tests\test_cross_camera_correlation.py ............              [ 24%]
+backend\tests\test_cross_camera_correlation.py ............              [ 23%]
 backend\tests\test_crud.py .                                             [ 24%]
 backend\tests\test_detection.py .................                        [ 31%]
 backend\tests\test_event_persistence.py .................                [ 38%]
-backend\tests\test_gis.py ...............                                [ 45%]
+backend\tests\test_gis.py ...............                                [ 44%]
 backend\tests\test_indexes.py ..                                         [ 45%]
 backend\tests\test_investigations.py ................                    [ 52%]
-backend\tests\test_migrations.py .                                       [ 53%]
+backend\tests\test_migrations.py .                                       [ 52%]
 backend\tests\test_realtime_websockets.py ....................           [ 61%]
 backend\tests\test_relationships.py ...                                  [ 62%]
 backend\tests\test_security_rbac.py .......................              [ 72%]
-backend\tests\test_streaming.py ..................                       [ 80%]
-backend\tests\test_tactical_ui_and_e2e.py .........                      [ 83%]
+backend\tests\test_streaming.py ..................                       [ 79%]
+backend\tests\test_tactical_ui_and_e2e.py ..........                     [ 84%]
 backend\tests\test_vehicle_history.py ....................               [ 92%]
 backend\tests\test_watchlist_matching.py ..................              [100%]
 
-============================ 237 passed in 34.50s =============================
+============================ 238 passed in 35.77s =============================
 ```
 
 ---
@@ -129,8 +129,10 @@ In strict compliance with Rules 2, 5, 6, 29, 30, and 31, all unverified or uncon
 | Capability / Dependency | Operational Status | Technical Root Cause | Mitigation / Fallback |
 |---|---|---|---|
 | **Official Sentinel RTSP Host** | `BLOCKED` | Host IP/domain not provided in environment or repository | Mock video streamer and synthetic packet decoding tests verify entire ingestion and inference pipeline |
+| **Participant Custom Dataset** | `NOT PROVIDED` | No participant custom CCTV video dataset provided in workspace | Pipeline execution truthfully omitted; zero synthetic data labeled as custom |
 | **Official Government Hotlist DB** | `BLOCKED` | External police database endpoints & credentials not provisioned | Internal watchlist matching engine verified with exact and fuzzy Levenshtein algorithms |
 | **External Vahan / Parivahan API** | `BLOCKED` | Government national transport portal API credentials unconfigured | Vehicle profile aggregation aggregates persisted surveillance telemetry |
+| **CodeRabbit AI Review** | `NOT PERFORMED` | GitHub repository webhook / CodeRabbit bot app not connected | Truthfully reported as NOT PERFORMED |
 | **CUDA GPU Acceleration** | `UNAVAILABLE` | Python 3.14 on Windows; prebuilt CUDA ONNX Runtime wheels not published | CPU execution provider utilized; ONNX Runtime architecture verified |
 | **80,000-Camera Physical Load Test** | `NOT BENCHMARKED` | Physical hardware and multi-node cluster not provisioned locally | Scalable architecture implemented (bounded queues, ring buffers, indexed DB queries, on-demand streaming) |
 | **Offline Map Tile Availability** | `FALLBACK ACTIVE` | OSM public tiles require live internet access | UI explicitly detects tile connection failures and renders `MAP TILES UNAVAILABLE` banner without crashing |

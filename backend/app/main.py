@@ -19,6 +19,7 @@ from backend.app.api.v1.ws import router as ws_router
 from backend.app.api.v1.auth import router as auth_router
 from backend.app.api.v1.users import router as users_router
 from backend.app.api.v1.audit import router as audit_router
+from backend.app.api.v1.system import router as system_router
 from backend.app.services.streaming.manager import stream_manager
 from backend.app.services.realtime.manager import websocket_manager
 
@@ -68,6 +69,7 @@ app.include_router(alerts_router, prefix="/api/v1")
 app.include_router(vehicles_router, prefix="/api/v1")
 app.include_router(investigations_router, prefix="/api/v1")
 app.include_router(ws_router, prefix="/api/v1")
+app.include_router(system_router, prefix="/api/v1")
 
 
 

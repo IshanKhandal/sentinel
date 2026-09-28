@@ -205,16 +205,51 @@ def test_ui_serves_html_dashboard(client):
 
 
 def test_ui_serves_static_assets(client):
-    """Verify /static/style.css and /static/app.js are correctly mounted and served."""
+    """Verify /static/style.css and /static/app.js are correctly mounted and served with light-theme design system."""
     css_resp = client.get("/static/style.css")
     assert css_resp.status_code == 200
     assert "text/css" in css_resp.headers.get("content-type", "")
+    assert "--bg-canvas" in css_resp.text
     assert "--bg-darkest" in css_resp.text
 
     js_resp = client.get("/static/app.js")
     assert js_resp.status_code == 200
     assert "javascript" in js_resp.headers.get("content-type", "")
     assert "Sentinel Gujarat" in js_resp.text
+
+
+def test_system_data_sources_endpoint(client):
+    """Verify first-class data source abstraction and truthful two-source validation status."""
+    resp = client.get("/api/v1/system/data-sources")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["active_source"] == "DEMO"
+    assert "DEMO" in data["active_source_label"]
+
+    # Sentinel Live is BLOCKED because stream host is unconfigured
+    assert data["sentinel_live"]["status"] == "BLOCKED"
+    assert "unset" in data["sentinel_live"]["reason"].lower() or "not provided" in data["sentinel_live"]["reason"].lower()
+
+    # Custom Dataset is NOT PROVIDED
+    assert data["custom_dataset"]["status"] == "NOT PROVIDED"
+
+    # Demo Data is AVAILABLE
+    assert data["demo_data"]["status"] == "AVAILABLE"
+    assert data["demo_data"]["is_synthetic"] is True
+
+    # Supported sources list
+    source_ids = [s["id"] for s in data["supported_sources"]]
+    assert "SENTINEL_LIVE" in source_ids
+    assert "SENTINEL_TEST" in source_ids
+    assert "CUSTOM_DATASET" in source_ids
+    assert "DEMO" in source_ids
+    assert "TEST" in source_ids
+
+    # Two source validation matrix
+    matrix = data["two_source_validation"]
+    assert matrix["sentinel_dataset"]["status"] == "BLOCKED"
+    assert matrix["custom_dataset"]["status"] == "NOT PROVIDED"
+    assert "VERIFIED" in matrix["demo_dataset"]["status"]
 
 
 def test_ui_security_headers_present(client):

@@ -30,6 +30,8 @@ from backend.app.services.alert import (
     AlertProvenanceError,
     AlertValidationError,
 )
+from backend.app.services.realtime.envelope import EventType, RealtimeEventEnvelope
+from backend.app.services.realtime.event_bus import event_bus
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 
@@ -98,7 +100,21 @@ def acknowledge_alert(
             user_id=payload.acknowledged_by_user_id,
             resolution_notes=payload.resolution_notes,
         )
-        return AlertEngine.build_alert_read_dto(alert)
+        dto = AlertEngine.build_alert_read_dto(alert)
+        event_bus.publish_sync(
+            RealtimeEventEnvelope.create(
+                event_type=EventType.ALERT_UPDATED.value,
+                source="alert_service",
+                data={
+                    "alert_id": str(alert.id),
+                    "previous_status": "NEW",
+                    "current_status": alert.status,
+                    "acknowledged_by_user_id": str(alert.acknowledged_by_user_id) if alert.acknowledged_by_user_id else None,
+                    "resolution_notes": alert.resolution_notes,
+                }
+            )
+        )
+        return dto
     except AlertNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -126,7 +142,19 @@ def update_alert_status(
             resolution_notes=payload.resolution_notes,
             user_id=payload.user_id,
         )
-        return AlertEngine.build_alert_read_dto(alert)
+        dto = AlertEngine.build_alert_read_dto(alert)
+        event_bus.publish_sync(
+            RealtimeEventEnvelope.create(
+                event_type=EventType.ALERT_UPDATED.value,
+                source="alert_service",
+                data={
+                    "alert_id": str(alert.id),
+                    "current_status": alert.status,
+                    "resolution_notes": alert.resolution_notes,
+                }
+            )
+        )
+        return dto
     except AlertNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -150,11 +178,30 @@ def evaluate_matches(
     Creates qualifying alert records with 60-second deduplication.
     """
     try:
-        return AlertEngine.process_matches(
+        result = AlertEngine.process_matches(
             db=db,
             matches=matches,
             window_seconds=window_seconds,
         )
+        for alert_item in result.alerts_created:
+            event_bus.publish_sync(
+                RealtimeEventEnvelope.create(
+                    event_type=EventType.ALERT_CREATED.value,
+                    source="alert_engine",
+                    data={
+                        "alert_id": str(alert_item.id),
+                        "severity": alert_item.severity,
+                        "plate_number": alert_item.plate_number,
+                        "watchlist_category": alert_item.watchlist_category,
+                        "camera_id": str(alert_item.camera_id) if alert_item.camera_id else None,
+                        "camera_name": alert_item.camera_name,
+                        "snapshot_path": alert_item.snapshot_path,
+                        "snapshot_url": alert_item.snapshot_path,
+                        "fir_number": alert_item.fir_number,
+                    }
+                )
+            )
+        return result
     except AlertProvenanceError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

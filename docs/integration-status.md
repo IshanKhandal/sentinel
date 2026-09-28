@@ -47,9 +47,9 @@
 | Correlation Performance Benchmark | Multi-camera graph correlation and trajectory query latency under load | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | Unbenchmarked local prototype; adheres strictly to Rule 10 | Benchmark dataset/harness unconfigured |
 | Investigation Dossier Engine | Case management, detection/alert attachment, evidence metadata registration, lifecycle transitions | `backend/app/services/investigation/service.py`, `backend/app/api/v1/investigations.py` | YES | Internal Service (`/api/v1/investigations`) | Application context | VERIFIED WORKING | 16 unit/API tests passing; case CRUD, monotonic events, audit logging, evidence metadata verified | None |
 | Investigation Performance Benchmark | Case timeline graph retrieval and event association latency under load | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | Unbenchmarked local prototype; adheres strictly to Rule 10 | Benchmark dataset/harness unconfigured |
-
-
-
+| Realtime WebSocket Gateway | Ephemeral event broadcast, topic routing, backpressure queues, heartbeat/reaper | `backend/app/services/realtime/`, `backend/app/api/v1/ws.py` | YES | `ws://<host>/api/v1/ws/events` | Optional token validation (Stage 15 hardening) | VERIFIED WORKING | 20 unit/API tests passing; handshake, subscriptions, ping/pong, backpressure drop verified | None |
+| Live Sentinel Real-Time Push Stream | Real-time push streaming from live Sentinel CCTV deployments | Sentinel Surveillance Gateway | NO | `ws://<host>/api/v1/ws/events` | UNKNOWN | BLOCKED | Host unconfigured; zero live cameras connected | Sentinel stream host UNKNOWN / BLOCKED |
+| WebSocket Gateway Performance Benchmark | Broadcast latency, concurrent client capacity (1000 connections), and queue drop rates under load | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | Unbenchmarked local prototype; adheres strictly to Rule 10 | Benchmark dataset/harness unconfigured |
 
 ---
 

@@ -16,6 +16,8 @@ from backend.app.models.surveillance import Camera
 from backend.app.schemas.streaming import StreamSessionResponse, StreamActionResponse
 from backend.app.services.streaming.manager import stream_manager
 from backend.app.services.streaming.models import sanitize_stream_url
+from backend.app.services.realtime.envelope import EventType, RealtimeEventEnvelope
+from backend.app.services.realtime.event_bus import event_bus
 
 router = APIRouter(prefix="/streams", tags=["streams"])
 
@@ -98,6 +100,20 @@ def start_camera_stream(camera_id: str, db: Session = Depends(get_db)) -> Stream
         rtsp_url=camera.rtsp_url
     )
 
+    event_bus.publish_sync(
+        RealtimeEventEnvelope.create(
+            event_type=EventType.CAMERA_STATUS_CHANGED.value,
+            source="stream_manager",
+            data={
+                "camera_id": str(camera.id),
+                "camera_name": camera.name,
+                "previous_status": "OFFLINE",
+                "current_status": "ONLINE" if session.connection_state == "LIVE" else session.connection_state,
+                "reason": "Stream ingestion worker started",
+            }
+        )
+    )
+
     return StreamActionResponse(
         camera_id=str(camera.id),
         status="STARTED",
@@ -111,6 +127,18 @@ def stop_camera_stream(camera_id: str) -> StreamActionResponse:
     """Stop an active camera stream worker and release decoder resources."""
     stopped = stream_manager.stop_stream(camera_id)
     if stopped:
+        event_bus.publish_sync(
+            RealtimeEventEnvelope.create(
+                event_type=EventType.CAMERA_STATUS_CHANGED.value,
+                source="stream_manager",
+                data={
+                    "camera_id": camera_id,
+                    "previous_status": "ONLINE",
+                    "current_status": "OFFLINE",
+                    "reason": "Stream ingestion worker stopped",
+                }
+            )
+        )
         return StreamActionResponse(
             camera_id=camera_id,
             status="STOPPED",

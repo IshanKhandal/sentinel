@@ -36,6 +36,8 @@ from backend.app.services.investigation import (
     ReferencedEntityNotFoundError,
 )
 from backend.app.services.correlation import CorrelationValidationError
+from backend.app.services.realtime.envelope import EventType, RealtimeEventEnvelope
+from backend.app.services.realtime.event_bus import event_bus
 
 router = APIRouter(prefix="/investigations", tags=["Investigations"])
 
@@ -149,12 +151,25 @@ def update_investigation(
 ) -> InvestigationRead:
     """Update case description, target plate, lead detective, or advance lifecycle status."""
     try:
-        return InvestigationService.update_investigation(
+        updated = InvestigationService.update_investigation(
             db=db,
             investigation_id=investigation_id,
             data=data,
             ip_address=_extract_client_ip(request),
         )
+        event_bus.publish_sync(
+            RealtimeEventEnvelope.create(
+                event_type=EventType.INVESTIGATION_UPDATED.value,
+                source="investigation_service",
+                data={
+                    "investigation_id": str(updated.id),
+                    "case_number": updated.case_number,
+                    "status": updated.status,
+                    "update_type": "lifecycle_update",
+                }
+            )
+        )
+        return updated
     except InvestigationNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -190,12 +205,25 @@ def attach_event(
 ) -> InvestigationEventRead:
     """Tag and attach a verified detection or operational alert to the investigation timeline."""
     try:
-        return InvestigationService.attach_event(
+        ev = InvestigationService.attach_event(
             db=db,
             investigation_id=investigation_id,
             data=data,
             ip_address=_extract_client_ip(request),
         )
+        event_bus.publish_sync(
+            RealtimeEventEnvelope.create(
+                event_type=EventType.INVESTIGATION_UPDATED.value,
+                source="investigation_service",
+                data={
+                    "investigation_id": str(investigation_id),
+                    "event_id": str(ev.id),
+                    "attached_event_type": "DETECTION" if data.detection_id else "ALERT",
+                    "update_type": "event_attached",
+                }
+            )
+        )
+        return ev
     except InvestigationNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

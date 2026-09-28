@@ -22,6 +22,8 @@ from backend.app.services.event_persistence import (
     EventValidationError,
     PersistenceError
 )
+from backend.app.services.realtime.envelope import EventType, RealtimeEventEnvelope
+from backend.app.services.realtime.event_bus import event_bus
 
 router = APIRouter(prefix="/detections", tags=["detections"])
 
@@ -127,6 +129,20 @@ def persist_detection_event(
         detection = EventPersistenceService.persist_anpr_result(
             db=db,
             anpr_result=anpr_result
+        )
+        event_bus.publish_sync(
+            RealtimeEventEnvelope.create(
+                event_type=EventType.DETECTION_CREATED.value,
+                source="event_persistence",
+                data={
+                    "detection_id": str(detection.id),
+                    "camera_id": str(detection.camera_id),
+                    "plate_number": detection.plate_number,
+                    "vehicle_type": detection.vehicle_type,
+                    "confidence_plate": detection.confidence_plate,
+                    "detected_at": detection.detected_at.isoformat() if detection.detected_at else None,
+                }
+            )
         )
         cam_name = detection.camera.name if detection.camera else None
         return DetectionRead(

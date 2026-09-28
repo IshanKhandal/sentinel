@@ -15,13 +15,17 @@ from backend.app.api.v1.watchlists import router as watchlists_router
 from backend.app.api.v1.alerts import router as alerts_router
 from backend.app.api.v1.vehicles import router as vehicles_router
 from backend.app.api.v1.investigations import router as investigations_router
+from backend.app.api.v1.ws import router as ws_router
 from backend.app.services.streaming.manager import stream_manager
+from backend.app.services.realtime.manager import websocket_manager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager ensuring clean background worker teardown."""
+    websocket_manager.start_reaper()
     yield
+    await websocket_manager.shutdown_all()
     stream_manager.shutdown_all()
 
 
@@ -45,6 +49,7 @@ app.include_router(watchlists_router, prefix="/api/v1")
 app.include_router(alerts_router, prefix="/api/v1")
 app.include_router(vehicles_router, prefix="/api/v1")
 app.include_router(investigations_router, prefix="/api/v1")
+app.include_router(ws_router, prefix="/api/v1")
 
 
 

@@ -507,3 +507,90 @@ All non-2xx responses follow this uniform structure:
   }
   ```
 - **Authentication:** Public / Internal.
+
+---
+
+## 14. Realtime WebSocket Gateway (Stage 14)
+
+### `ws://<host>:<port>/api/v1/ws/events` (Alias: `/api/v1/ws`)
+- **Protocol:** WebSocket (RFC 6455 via Starlette / FastAPI).
+- **Status:** `IMPLEMENTED (Stage 14 Realtime WebSockets)`
+- **Authentication Boundary:** Ticket / Token passed via query string (`?token=<jwt_access_token>`). If token is explicitly invalid or expired, closes with code `4401 Unauthorized`. In prototype / unauthenticated mode, connections are permitted pending Stage 15 RBAC enforcement. *Security boundary: AUTHORIZATION HARDENING DEFERRED TO STAGE 15*.
+- **Connection Lifecycle:**
+  1. `CONNECT`: Client initiates WebSocket handshake.
+  2. `ACCEPT`: Server validates capacity ceiling and token format, accepting socket.
+  3. `HANDSHAKE ACK`: Server immediately transmits connection acknowledgment frame:
+     ```json
+     {
+       "event": "connection.acknowledged",
+       "session_id": "ws-sess-7b19482a",
+       "timestamp": "2026-09-29T10:00:00Z"
+     }
+     ```
+  4. `SUBSCRIBE`: Client defaults to topic `"all"` or sends subscription mutation frames.
+  5. `HEARTBEAT`: 15-second interval; client sends `{"type": "ping"}`; server responds `{"type": "pong", "timestamp": "..."}`. Inactivity exceeding 45 seconds triggers stale connection reaping.
+  6. `DISCONNECT`: Client or server termination cleanly removes session from active registry.
+
+### Canonical Event Envelope
+```json
+{
+  "event_id": "e1f2a3b4-0000-0000-0000-000000000001",
+  "event_type": "alert.created",
+  "event": "alert.created",
+  "timestamp": "2026-09-29T10:00:15Z",
+  "source": "alert_engine",
+  "mode": "DEMO",
+  "data": {
+    "alert_id": "a1b2c3d4-...",
+    "severity": "CRITICAL",
+    "plate_number": "GJ01AB1234",
+    "watchlist_category": "STOLEN",
+    "camera_id": "c1a2b3c4-...",
+    "camera_name": "Junction 04 - Ashram Road",
+    "snapshot_path": "snapshots/cam01/alert.jpg",
+    "fir_number": "FIR-2026-4421-AHM"
+  }
+}
+```
+
+### Supported Event Types & Topics
+| Event Type | Topic Category | Originating Subsystem | Critical Priority |
+| :--- | :--- | :--- | :--- |
+| `alert.created` | `alerts` | Alert Engine | **Yes** (Evicts non-critical under backpressure) |
+| `alert.updated` | `alerts` | Alert Service (Acknowledge / Status) | No |
+| `camera.status_changed` | `cameras` | Stream Manager / Camera Registry | No |
+| `system.health_changed` | `system` | Health Monitor | No |
+| `investigation.updated` | `investigations` | Investigation Engine | No |
+| `detection.created` | `detections` | Event Persistence Service | No |
+
+### Client Command Protocol
+- **Ping:** `{"type": "ping"}` -> `{"type": "pong", "timestamp": "..."}`
+- **Subscribe:** `{"action": "subscribe", "topics": ["alerts", "cameras"]}` -> `{"event": "subscription.acknowledged", "subscribed_topics": [...]}`
+- **Unsubscribe:** `{"action": "unsubscribe", "topics": ["detections"]}` -> `{"event": "unsubscription.acknowledged", "subscribed_topics": [...]}`
+- **Errors:** Structured responses on invalid action (`UNKNOWN_ACTION`), malformed payload (`MALFORMED_JSON`), invalid topic (`INVALID_SUBSCRIPTION`), or oversized frame (`PAYLOAD_TOO_LARGE`).
+
+### Backpressure & Delivery Semantics
+- **Bounded Queues:** Each client has a bounded buffer of `WS_CLIENT_QUEUE_SIZE` (default 100).
+- **Isolation Policy:** Slow or frozen consumers cannot block or stall broadcasting to other clients.
+- **Shedding Strategy:** When queue is saturated, non-critical events are immediately dropped. Critical events (`alert.created`) evict older non-critical frames to guarantee delivery.
+- **Transient Streaming:** WebSockets are an ephemeral push mechanism; persisted database records remain authoritative for historical recovery via REST APIs.
+
+### `GET /api/v1/ws/metrics`
+- **Purpose:** Retrieve operational observability metrics for the realtime subsystem.
+- **Response (200 OK):**
+  ```json
+  {
+    "status": "ONLINE",
+    "metrics": {
+      "active_connections": 4,
+      "connection_attempts": 28,
+      "successful_connections": 26,
+      "disconnects": 22,
+      "events_published": 1420,
+      "events_delivered": 5600,
+      "failed_deliveries": 0,
+      "dropped_events": 2,
+      "malformed_messages": 0
+    }
+  }
+  ```

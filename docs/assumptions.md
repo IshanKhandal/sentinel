@@ -39,9 +39,9 @@
 | ASM-031 | 2026-09-29 | Investigation Entity Reference Invariant | Investigations organize and reference existing persisted observations (`Detection`) and alerts (`Alert`) via foreign keys rather than duplicating telemetry rows; original detection records remain authoritative. | Required by Stage 13 Directive Sections 7, 8. | Low | VERIFIED |
 | ASM-032 | 2026-09-29 | Evidence Export Reservation | Digital evidence export (PDF dossiers, ZIP packages, signed forensic archives) is strictly reserved for the export engine and returns HTTP 501 Not Implemented (`EVIDENCE EXPORT NOT IMPLEMENTED`) in Stage 13. | Required by Stage 13 Directive Section 17. | Low | VERIFIED |
 | ASM-033 | 2026-09-29 | Neutral Evidence Invariant | The investigation engine organizes factual observations and analyst notes without manufacturing automatic criminal, suspect, or guilt conclusions. | Required by Stage 13 Directive Section 3, 14. | Low | VERIFIED |
-
-
-
+| ASM-034 | 2026-09-29 | Transient Delivery Semantics | Realtime WebSockets provide ephemeral, best-effort event notification; database persistence remains the sole authoritative source of truth. No client message replay or persistence is performed by the WebSocket layer. | Required by Stage 14 Directive Section 3, 14. | Low | VERIFIED |
+| ASM-035 | 2026-09-29 | In-Process Backpressure Policy | Client egress queues are strictly bounded (`WS_CLIENT_QUEUE_SIZE = 100`). Under slow consumer conditions, non-critical events are immediately dropped with dropped counter incremented; critical events (`alert.created`) evict the oldest non-critical event to guarantee mission-critical alert delivery. | Required by Stage 14 Directive Section 11, 12, 13. | Low | VERIFIED |
+| ASM-036 | 2026-09-29 | Authentication Boundary & RBAC Hardening | WebSockets accept authentication tokens via query parameter (`?token=`) or first connection payload. If a token is explicitly invalid or expired, the socket is rejected with code 4401. Granular role-based access control and token refresh workflows are strictly deferred to Stage 15 (`AUTHORIZATION HARDENING DEFERRED TO STAGE 15`). | Required by Stage 14 Directive Section 2, 7. | Low | VERIFIED |
 
 ---
 

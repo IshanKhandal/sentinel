@@ -129,6 +129,11 @@ The system formally supports **EXACTLY TWO** mutually isolated operational modes
 - **Evidence Export Reservation:** Cryptographic evidence export (ZIP/PDF dossier) is reserved for the export engine and returns `EVIDENCE EXPORT NOT IMPLEMENTED` (HTTP 501).
 - **Performance Invariant:** Investigation graph retrieval and case timeline indexing are explicitly reported as `Investigation performance: NOT BENCHMARKED` until formal database load tests are conducted.
 
+---
 
+## 12. Realtime WebSocket Gateway Data Fidelity & Provenance
 
-
+- **`mode` Envelope Field Guarantee:** Every realtime event envelope broadcast over WebSockets explicitly carries a `mode` field (`DEMO` or `LIVE`). Any event originating from demo feeds, synthetic test fixtures, or demo streams sets `mode = "DEMO"`.
+- **Zero Event Simulation / Fabrication:** When no live detection, camera status change, alert, or investigation update occurs in the system, the event bus remains strictly idle. Synthetic alerts, mock sightings, or fake vehicles are NEVER pushed over the WebSocket to make a dashboard look active.
+- **Ephemeral Transport Invariant:** WebSockets serve strictly as an ephemeral push notification transport. Database persistence remains the single authoritative source of truth. WebSockets do not manufacture state or replay synthetic history upon connection.
+- **Performance Invariant:** Realtime WebSocket gateway throughput, broadcast latency under 1000 concurrent connections, and backpressure eviction rates are explicitly reported as `WebSocket performance: NOT BENCHMARKED` until verified benchmarks are conducted.

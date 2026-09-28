@@ -60,9 +60,13 @@ class Settings(BaseSettings):
     # Alert Engine & Deduplication Configuration (Stage 10 Architecture)
     ALERT_DEDUPLICATION_WINDOW_SECONDS: int = 60  # Frozen architecture 60-second suppression window
 
+    # Realtime WebSocket Gateway Configuration (Stage 14 Architecture)
+    WS_HEARTBEAT_INTERVAL_SECONDS: float = 15.0
+    WS_HEARTBEAT_TIMEOUT_SECONDS: float = 45.0
+    WS_CLIENT_QUEUE_SIZE: int = 100
+    WS_MAX_MESSAGE_BYTES: int = 65536
+    WS_MAX_CONNECTIONS: int = 1000
 
-
-    
     # Security
     SECRET_KEY: str = "development-only-insecure-secret-key-do-not-use-in-production-min32c"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480

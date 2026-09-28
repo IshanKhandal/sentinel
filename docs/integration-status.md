@@ -21,8 +21,12 @@
 | Stream Ingestion Engine | RTSP/TCP worker, PTS-aware frame demuxer, ring buffer, backoff | `backend/app/services/streaming/` | YES | Internal Service | Application context | VERIFIED WORKING | 18 unit/API tests passing; forced TCP, PTS extraction, backoff verified | None |
 | OpenCV VideoIO Engine | Demuxing RTSP streams and JPEG frame snapshot generation | Python `opencv-python` 5.0.0 | YES | `cv2.VideoCapture` / `cv2.imencode` | Local Python runtime | VERIFIED WORKING | Version 5.0.0 installed; `cv2.videoio_registry.hasBackend(cv2.CAP_FFMPEG) == True` | None |
 | FFmpeg Host CLI | Standalone command-line transcoding and packet inspection | Windows PATH `ffmpeg.exe` | NO | `ffmpeg -version` | CLI access | UNAVAILABLE | `ffmpeg` command not found in system PATH; OpenCV built-in videoio DLL used instead | External FFmpeg CLI not installed in Windows PATH |
-| GStreamer Media Framework | Hardware-accelerated pipeline decoding (`gst-launch-1.0`) | Windows PATH GStreamer binaries | NO | `gst-launch-1.0` | CLI access | UNAVAILABLE | `gst-launch-1.0` command not found in system PATH | GStreamer runtime not installed on host |
+| Vehicle Detection Pipeline | Pluggable ObjectDetector, letterboxing, NMS, normalized detections | `backend/app/services/detection/` | YES | Internal Service | Application context | VERIFIED WORKING | 17 unit/API tests passing; letterbox coordinate reversal and PTS propagation verified | None |
+| ONNX Runtime Engine | Neural network inference engine for vehicle detection | Python `onnxruntime` 1.28.0 | YES | `onnxruntime.InferenceSession` | Local Python runtime | VERIFIED WORKING (CPU) | Version 1.28.0 installed; `CPUExecutionProvider` active | None |
+| CUDA / GPU Acceleration | Hardware acceleration on NVIDIA GeForce RTX 2050 | NVIDIA Driver 610.47 / CUDA 13.3 | NO | GPU / CUDA Runtime | Local GPU hardware | UNAVAILABLE IN PYTHON 3.14 | RTX 2050 detected via `nvidia-smi`; however, Python 3.14 lacks pre-built `onnxruntime-gpu` or `torch` CUDA wheels | Python 3.14 CUDA packages not yet published |
+| Real Sentinel Stream Vehicle Inference | Real-time object detection against official Sentinel feeds | Sentinel RTSP Feeds | NO | `rtsp://<host>:8554/...` | UNKNOWN | BLOCKED | Sentinel stream host is unconfigured; zero live cameras accessible | External host address UNKNOWN / BLOCKED |
 | Model Weights Storage | Pre-trained weights for vehicle detection & ANPR | Ultralytics / Hugging Face / Custom storage | NO | UNKNOWN | UNKNOWN | UNVERIFIED | No weights or model files present in workspace | Model selection pending challenge specifications |
+
 
 
 ---

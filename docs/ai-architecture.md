@@ -150,9 +150,11 @@ latency_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0
 ---
 
 ## 4. Current Verification Baseline
+ 
+- **Verified Models in Workspace:** External model weights unconfigured; `MockObjectDetector` active as verified offline baseline.
+- **Claimed Accuracies:** NOT BENCHMARKED (Strict Rule 10 adherence: no accuracy or performance claims permitted without recorded benchmark logs).
+- **Supported Implementations Built & Verified:**
+  1. `MockObjectDetector` ([backend/app/services/detection/mock_detector.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/detection/mock_detector.py)): Verified for offline testing, CI integration, and deterministic test fixtures.
+  2. `ONNXRuntimeObjectDetector` ([backend/app/services/detection/onnx_detector.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/detection/onnx_detector.py)): Verified for production execution with ONNX Runtime 1.28.0 (`CPUExecutionProvider` active).
+  3. `VehicleDetectionService` ([backend/app/services/detection/service.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/detection/service.py)): Integrated with Stage 5 stream buffer, frame sampling decimation, and visual debugger overlay.
 
-- **Verified Models in Workspace:** None currently present.
-- **Claimed Accuracies:** 0.0% (Strict Rule 10 adherence: no accuracy claims permitted until tested against verified validation datasets).
-- **Supported Implementations to be Built:**
-  1. `MockInferenceProvider` (For offline integration and unit testing).
-  2. `ONNXRuntimeProvider` (For CPU/GPU production execution).

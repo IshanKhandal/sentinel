@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     STREAM_HEALTH_WATCHDOG_TIMEOUT_SECONDS: float = 10.0
     STREAM_CONSECUTIVE_FRAMES_FOR_HEALTH: int = 5
 
+    # Vehicle Detection Pipeline (Stage 6 Architecture)
+    VEHICLE_DETECTOR_BACKEND: Literal["MOCK", "ONNX_RUNTIME"] = "MOCK"
+    VEHICLE_DETECTOR_MODEL_PATH: Optional[str] = None
+    VEHICLE_CONFIDENCE_THRESHOLD: float = 0.25
+    VEHICLE_IOU_THRESHOLD: float = 0.45
+    DETECTION_FPS_LIMIT: float = 5.0
+
+
     
     # Security
     SECRET_KEY: str = "development-only-insecure-secret-key-do-not-use-in-production-min32c"

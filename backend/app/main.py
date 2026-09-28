@@ -8,6 +8,7 @@ from backend.app.core.config import settings
 from backend.app.api.v1.cameras import router as cameras_router
 from backend.app.api.v1.gis import router as gis_router
 from backend.app.api.v1.streams import router as streams_router
+from backend.app.api.v1.detection import router as detection_router
 from backend.app.services.streaming.manager import stream_manager
 
 
@@ -31,6 +32,8 @@ app = FastAPI(
 app.include_router(cameras_router, prefix="/api/v1")
 app.include_router(gis_router, prefix="/api/v1")
 app.include_router(streams_router, prefix="/api/v1")
+app.include_router(detection_router, prefix="/api/v1")
+
 
 
 

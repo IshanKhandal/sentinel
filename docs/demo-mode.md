@@ -1,34 +1,50 @@
-# Demo Mode & Simulation Boundary Specification
+# Sentinel Demo vs. Live Operational Modes
 
-> **Protocol Note:** In accordance with Project Rules 5, 6, 29, and 30:
-> - Never silently replace a missing real dependency with fake data.
-> - Clearly label and isolate demo/mock data from live/production logic.
-> - Trustworthy UI data-states must be maintained at all times.
-
-## System Reality Matrix
-
-| Subsystem / Component | Current State | Real Components | Simulated / Mock Components | Data Provenance | UI Indicator Flag |
-|---|---|---|---|---|---|
-| Project Architecture & Documentation | REAL | Markdown specifications, Git structure | None | Developer & User specified | N/A |
-| Camera Feeds | NONE | None | None | None | `OFFLINE` / `UNAVAILABLE` |
-| Video Analytics / Inference | NONE | None | None | None | `OFFLINE` / `UNAVAILABLE` |
-| Watchlist / Person / Vehicle Data | NONE | None | None | None | `UNAVAILABLE` |
-| GIS / Map Coordinates | NONE | None | None | None | `UNAVAILABLE` |
+> **Document Status:** ARCHITECTURE FREEZE (Phase 1)  
+> **Protocol Standard:** Non-Hallucination & Evidence-First Engineering Rules ([docs/engineering-rules.md](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/docs/engineering-rules.md), Rules 5, 6, 29, 30, 31)
 
 ---
 
-## Allowed UI Data States (Rule 30)
+## 1. The Two Operational States
 
-Every visual component or widget presenting data must display one of the following states:
+The system formally supports **EXACTLY TWO** mutually isolated operational modes:
 
-1. **`LIVE`**: Active, real-time data received from an authentic, verified source (e.g., active hardware sensor or live streaming server). NEVER display unless live connection is verified and packets are being received.
-2. **`DEMO`**: Clearly flagged synthetic, mock, or prerecorded playback data used for demonstration. Must be visibly badged with a high-contrast `[DEMO]` indicator.
-3. **`OFFLINE`**: Intended real endpoint or stream exists in configuration but is currently unreachable.
-4. **`UNKNOWN`**: Data origin or feed state cannot be determined with certainty.
-5. **`UNAVAILABLE`**: No data source, feed, or simulation is configured.
+### `DEMO` MODE
+- **Definition:** The platform operates using local synthetic fixtures, sample test videos, or mock API responses.
+- **Purpose:** Development, automated continuous integration tests, and offline hackathon demonstration.
+- **Labeling Standard:** Every UI component, camera feed, map marker, and report generated in DEMO mode MUST display a persistent, high-contrast badge: `[DEMO]`.
+- **Constraint:** Demo data must NEVER be claimed or presented as real surveillance feeds or government records.
+
+### `LIVE` MODE
+- **Definition:** The platform processes exclusively genuine, verified surveillance streams, real hardware sensor packets, and authenticated government databases.
+- **Rule on Missing Dependencies:** If a configured live integration (e.g., an RTSP camera stream or police database) becomes unreachable or is not yet configured:
+  - The component **MUST NEVER** silently switch to `DEMO` mode or show simulated data.
+  - The component **MUST** display:
+    ```text
+    UNAVAILABLE
+    ```
+    or
+    ```text
+    OFFLINE
+    ```
+  - It must **NEVER** display `LIVE` or `CONNECTED` unless live telemetry packets are actively flowing and verified.
 
 ---
 
-## Isolation Rules
-- Mock/Demo data generators must reside in dedicated directories (e.g., `mock/`, `fixtures/`, or behind an explicit `DEMO_MODE=true` environment flag).
-- In production or default mode, attempting to access an unconfigured live resource must result in an explicit `UNAVAILABLE` or error status rather than silently falling back to mock data.
+## 2. UI Component Data-State Table
+
+| Data State | When to Display | Visual Presentation |
+|---|---|---|
+| **`LIVE`** | Active, real-time data streaming from a verified authentic source. | Emerald Green badge with subtle pulse indicator |
+| **`DEMO`** | Synthetic, mock, or prerecorded playback data in demo mode. | Amber Orange badge with bold `[DEMO]` label |
+| **`OFFLINE`** | Live source configured, but connection dropped or timed out. | Dark Grey badge with slash icon |
+| **`UNAVAILABLE`** | Resource not configured or required external service missing. | Crimson Red badge with warning indicator |
+| **`UNKNOWN`** | Telemetry source provenance cannot be conclusively verified. | Muted Purple badge with question mark |
+
+---
+
+## 3. Code Isolation Architecture
+
+- **Backend Flag:** `SENTINEL_OPERATION_MODE=DEMO` vs `SENTINEL_OPERATION_MODE=LIVE`.
+- **Directory Isolation:** All mock datasets, video loops, and synthetic generator scripts reside strictly under `tests/fixtures/` and `src/mock/`.
+- **Fail-Safe Guard:** Under `SENTINEL_OPERATION_MODE=LIVE`, all mock generator modules are completely bypassed and deactivated. An unconfigured live resource throws an explicit `IntegrationUnavailableException`.

@@ -459,3 +459,33 @@ class EventPersistenceService:
         total = query.count()
         items = query.order_by(Detection.detected_at.desc()).offset(skip).limit(min(limit, 200)).all()
         return items, total
+
+    @classmethod
+    def persist_and_match(
+        cls,
+        db: Session,
+        anpr_result: ANPRResult,
+        snapshot_path: Optional[str] = None,
+        plate_crop_path: Optional[str] = None,
+    ) -> Tuple[Detection, List[Any]]:
+        """Persist an ANPR detection (Stage 8) and evaluate against active watchlists (Stage 9).
+        
+        Boundary Enforcement:
+        - Executes Stage 8 transactional event persistence.
+        - Invokes Stage 9 deterministic watchlist matching engine.
+        - STRICT INVARIANT: Does NOT create alerts or trigger notifications (Stage 10 boundary).
+        """
+        from backend.app.services.watchlist.matcher import WatchlistMatcher
+
+        # Stage 8: Persist detection
+        detection = cls.persist_anpr_result(
+            db=db,
+            anpr_result=anpr_result,
+            snapshot_path=snapshot_path,
+            plate_crop_path=plate_crop_path,
+        )
+
+        # Stage 9: Evaluate against configured watchlists
+        matches = WatchlistMatcher.match_detection(db=db, detection=detection)
+
+        return detection, matches

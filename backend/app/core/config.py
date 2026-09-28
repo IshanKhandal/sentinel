@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     OCR_CONFIDENCE_THRESHOLD: float = 0.50
     ANPR_PREPROCESSING_VARIANT: Literal["standard", "clahe", "grayscale", "raw"] = "standard"
 
+    # Watchlist Matching Configuration (Stage 9 Architecture)
+    # Configurable implementation parameters (NOT scientifically validated benchmarks; unbenchmarked prototype)
+    WATCHLIST_FUZZY_MATCHING_ENABLED: bool = True
+    WATCHLIST_FUZZY_SIMILARITY_THRESHOLD: float = 0.85
+    WATCHLIST_FUZZY_MAX_DISTANCE: int = 1
+    WATCHLIST_OCR_CONFIDENCE_THRESHOLD: float = 0.40
+
 
 
     

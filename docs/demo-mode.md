@@ -82,3 +82,12 @@ The system formally supports **EXACTLY TWO** mutually isolated operational modes
 - **Zero Masquerading:** Test fixtures, synthetic detections, and demo stream frames are NEVER stored with `is_demo = FALSE`.
 - **Zero Fake Seed Data:** No synthetic plates, vehicles, or detections are pre-seeded in the database to simulate live traffic. Real database tables remain completely unpopulated until valid observations are processed.
 
+---
+
+## 7. Watchlist Matching Data Fidelity & Provenance
+
+- **`is_demo` Match Propagation:** Every match result evaluated from a DEMO detection or observation explicitly carries `is_demo = True` in its `WatchlistMatchResult` contract.
+- **Zero Masquerading:** DEMO matches are NEVER presented or persisted as verified LIVE police watchlist hits.
+- **Zero Fake Seed Hotlists:** No synthetic wanted persons, fake FIR numbers, or mock stolen vehicle hotlists are pre-seeded into the production database. The live database tables `watchlists` and `watchlist_entries` remain at 0 rows until authorized officers configure them.
+- **Accuracy Invariant:** Watchlist matching performance is reported strictly as `Matching accuracy: NOT BENCHMARKED` until verified benchmarks on representative datasets are performed.
+

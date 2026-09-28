@@ -33,6 +33,10 @@
 | Event Persistence Engine | Transactional persistence of vehicle detections and ANPR observations | `backend/app/services/event_persistence.py` | YES | Internal Service | Application context | VERIFIED WORKING | 14 unit/API tests passing; atomic transactions, FK enforcement, PTS timestamp preservation verified | None |
 | Detections & Vehicle Store | Relational storage with crucial indexes (plate_time, cam_time, detected_at) | SQLite `sentinel.db` / Alembic migration `f1a891746c72` | YES | Local SQLite Engine | Local filesystem | VERIFIED WORKING | Schema evolution verified; migration upgrade/downgrade/re-upgrade verified | PostgreSQL production server not installed locally |
 | Persistence Performance Benchmark | Measurement of sustained events/sec and write latency under load | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | No benchmark executed; adheres strictly to Rule 10 | Benchmark dataset/harness unconfigured |
+| Watchlist Matching Engine | Exact & Levenshtein matching, active filtering, match provenance | `backend/app/services/watchlist/matcher.py`, `service.py` | YES | Internal Service | Application context | VERIFIED WORKING | 14 unit/API tests passing; exact precedence, fuzzy threshold, zero alerts verified | None |
+| Watchlist Storage & Indexes | Hotlist storage backed by `idx_watchlist_entries_plate_active` | SQLite `sentinel.db` | YES | Local SQLite Engine | Local filesystem | VERIFIED WORKING | Index verified on `(plate_number, is_active)`; `UniqueConstraint("watchlist_id", "plate_number")` enforced | None |
+| Live Government Watchlist Feeds | Integration with live external police/state hotlist databases | Government transport / police databases | NO | UNKNOWN (DO NOT INVENT) | UNKNOWN | UNVERIFIED / BLOCKED | No external government watchlist feeds configured in workspace | External access credentials unprovided |
+| Watchlist Matching Accuracy Benchmark | Precision, recall, and false-positive benchmark under noise | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | Unbenchmarked local prototype; adheres strictly to Rule 10 | Benchmark dataset unconfigured |
 
 
 

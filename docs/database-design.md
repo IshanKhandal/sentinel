@@ -256,6 +256,8 @@ The schema is organized into 6 logical domains designed to avoid redundancy whil
   - `idx_watchlist_entries_plate_active` ON (`plate_number`, `is_active`) — **Real-Time Watchlist Matcher Index**
 - **Constraints:**
   - `UNIQUE(watchlist_id, plate_number)`
+- **Stage 9 Implementation Status:** VERIFIED WORKING. Matching queries utilize `idx_watchlist_entries_plate_active` joining `idx_watchlists_active` on (`is_active = True`). Exact matches take precedence; configurable Levenshtein fuzzy matching evaluates secondary candidates.
+- **Stage 10 Boundary Invariant:** Stage 9 outputs transient `WatchlistMatchResult` instances preserving complete observation provenance. Strictly NO rows are inserted into the `alerts` table during Stage 9; alert generation belongs exclusively to Stage 10.
 
 #### `alerts`
 - **Purpose:** Incident notifications raised when a detected vehicle matches an active watchlist entry.

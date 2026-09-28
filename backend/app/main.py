@@ -11,6 +11,7 @@ from backend.app.api.v1.streams import router as streams_router
 from backend.app.api.v1.detection import router as detection_router
 from backend.app.api.v1.anpr import router as anpr_router
 from backend.app.api.v1.detections import router as detections_router
+from backend.app.api.v1.watchlists import router as watchlists_router
 from backend.app.services.streaming.manager import stream_manager
 
 
@@ -37,6 +38,7 @@ app.include_router(streams_router, prefix="/api/v1")
 app.include_router(detection_router, prefix="/api/v1")
 app.include_router(anpr_router, prefix="/api/v1")
 app.include_router(detections_router, prefix="/api/v1")
+app.include_router(watchlists_router, prefix="/api/v1")
 
 
 

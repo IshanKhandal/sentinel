@@ -24,6 +24,9 @@
 | ASM-016 | 2026-09-28 | Indian Plate Syntax Validation | Normalized license plate strings are validated against authoritative Indian Motor Vehicle registration regex patterns (Standard State Series and Bharat Series) with safe positional character correction for OCR confusion. | Required by Sections 12 & 13 of Stage 7 Directive. | Low | VERIFIED |
 | ASM-017 | 2026-09-28 | Observation Timestamp Invariant | Video presentation timestamp `video_pts_ms` is the sole source for the observation timestamp `detected_at` (`datetime.fromtimestamp(pts / 1000.0, tz=timezone.utc)`), strictly isolated from database write time `created_at`. | Required by Section 5 of Stage 8 Directive. | Low | VERIFIED |
 | ASM-018 | 2026-09-28 | Cross-Dialect Datetime Handling | SQLAlchemy `DateTime(timezone=True)` returns offset-naive datetimes in SQLite and offset-aware in PostgreSQL; application normalization via `ensure_utc` guarantees deterministic comparison. | Confirmed by SQLite driver specification and verified by test suite. | Low | VERIFIED |
+| ASM-019 | 2026-09-29 | Plate Normalization Contract | Watchlist enrollment and matching operate strictly on normalized uppercase alphanumeric representations (`clean_plate_text`), preserving unmodified raw OCR text for traceability without inventing synthetic plate regex rejections. | Required by Stage 9 Directive Sections 5, 18. | Low | VERIFIED |
+| ASM-020 | 2026-09-29 | Fuzzy Threshold Parameterization | Fuzzy Levenshtein parameters (`WATCHLIST_FUZZY_SIMILARITY_THRESHOLD = 0.85`, `WATCHLIST_FUZZY_MAX_DISTANCE = 1`) are configurable implementation defaults, NOT scientifically benchmarked Sentinel thresholds. Matching accuracy is explicitly reported as NOT BENCHMARKED. | Required by Stage 9 Directive Sections 8, 9, 26. | Low | VERIFIED (PARAMETERIZED) |
+| ASM-021 | 2026-09-29 | Alert Engine Boundary Isolation | Watchlist matching strictly outputs transient observation match objects (`WatchlistMatchResult`) and does NOT insert records into `alerts` table or trigger alert workflows (Stage 10 boundary). | Required by Stage 9 Directive Sections 15, 16. | Low | VERIFIED |
 
 
 
@@ -38,4 +41,5 @@ The following items are deliberately **NOT** assumed:
 3. **Exact Live Catalogue Response Fields:** NOT ASSUMED. Parsed with flexible Pydantic `extra="allow"` model; marked `UNVERIFIED` until verified host response is captured.
 4. **Government Police Database Schemas & Endpoints:** NOT ASSUMED. Marked `UNKNOWN`.
 5. **Geographic Coordinates & Real Camera Locations:** NOT ASSUMED. Marked `UNKNOWN`.
-6. **Accuracy / Inference Benchmarks:** NOT ASSUMED. Marked `UNKNOWN`.
+6. **Accuracy / Inference Benchmarks:** NOT ASSUMED. Marked `UNKNOWN / NOT BENCHMARKED`.
+7. **Official Government Watchlist Feeds / Hotlists:** NOT ASSUMED. Marked `UNKNOWN / BLOCKED`. Never seed fake criminal records or hotlists into live database.

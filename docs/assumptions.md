@@ -16,6 +16,9 @@
 | ASM-008 | 2026-09-28 | Stream Host Provisioning | The actual stream host IP/domain is not provided in repository files or environment variables; the application must keep `SENTINEL_STREAM_HOST` unconfigured until supplied by organizers. | Confirmed by recursive file and environment search returning zero host matches. | Medium | VERIFIED (MARKED BLOCKED) |
 | ASM-009 | 2026-09-28 | Leaflet Tile Provider Fallback | Public OpenStreetMap tiles (`https://tile.openstreetmap.org/{z}/{x}/{y}.png`) are used as development-safe default without commercial API keys. Tile load errors are explicitly caught and surfaced as `MAP TILES UNAVAILABLE`. | Required by Rule 18 & 19; confirmed by absence of commercial tile credentials. | Low | VERIFIED |
 | ASM-010 | 2026-09-28 | Zero Synthetic GIS Points in Database | The production SQLite/PostgreSQL database strictly contains 0 synthetic GIS coordinates. Cameras without verified coordinates from `/api/ingest` remain `UNMAPPED` and are omitted from GeoJSON features. | Required by Phase 4 Rule 3 & 25; verified by `sentinel.db` camera row count (0 rows). | Low | VERIFIED |
+| ASM-011 | 2026-09-28 | OpenCV VideoIO FFmpeg Backend | OpenCV 5.0.0 built-in `CAP_FFMPEG` videoio backend DLL is utilized for RTSP/TCP packet demuxing and H.264/H.265 decoding on Windows, satisfying Phase 5 requirements without requiring `ffmpeg.exe` in system PATH. | Verified via `cv2.videoio_registry.hasBackend(cv2.CAP_FFMPEG) == True`. | Low | VERIFIED |
+| ASM-012 | 2026-09-28 | PTS Observation Clock Invariant | Authoritative observation time is strictly bound to stream PTS (`CAP_PROP_POS_MSEC`); system clock `time.monotonic()` is quarantined to internal connection watchdog and diagnostic metrics. | Required by Section 9 of Stage 5 Directive. | Low | VERIFIED |
+
 
 
 ---

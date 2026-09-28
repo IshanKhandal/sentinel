@@ -18,8 +18,12 @@
 | Police Watchlist / Vahan API | Vehicle registration and stolen/wanted vehicle lookup | Government transport / police database | NO | UNKNOWN (DO NOT INVENT) | UNKNOWN | UNVERIFIED | No API endpoints or schemas present in workspace | No API endpoints or access credentials provided |
 | Map / GIS Tile Service | Rendering geospatial camera locations and vehicle routes | Leaflet.js with public OpenStreetMap tile fallback | YES | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | None / Public tile access | VERIFIED WORKING (FALLBACK) | Functional in `frontend/gis_preview.html`; tile load errors explicitly tracked as `MAP TILES UNAVAILABLE` | Commercial tile API key unconfigured (development fallback active) |
 | GIS Spatial Engine | WGS 84 calculations, GeoJSON RFC 7946 generation, Haversine nearby queries | Pure Python in-memory GIS Service | YES | Internal Service (`backend/app/services/gis_service.py`) | Application context | VERIFIED WORKING | 15 unit/API tests passing; zero coordinate hallucination enforced | None |
-| Sentinel Camera Coordinates | Verified real-world GPS coordinates for catalogue cameras | Official `/api/ingest` payload | NO | `http://<host>/api/ingest` | UNKNOWN | UNKNOWN / ZERO RECORDED | Catalogue host unconfigured; zero coordinates in database; all cameras unmapped | Sentinel stream host is unconfigured |
+| Stream Ingestion Engine | RTSP/TCP worker, PTS-aware frame demuxer, ring buffer, backoff | `backend/app/services/streaming/` | YES | Internal Service | Application context | VERIFIED WORKING | 18 unit/API tests passing; forced TCP, PTS extraction, backoff verified | None |
+| OpenCV VideoIO Engine | Demuxing RTSP streams and JPEG frame snapshot generation | Python `opencv-python` 5.0.0 | YES | `cv2.VideoCapture` / `cv2.imencode` | Local Python runtime | VERIFIED WORKING | Version 5.0.0 installed; `cv2.videoio_registry.hasBackend(cv2.CAP_FFMPEG) == True` | None |
+| FFmpeg Host CLI | Standalone command-line transcoding and packet inspection | Windows PATH `ffmpeg.exe` | NO | `ffmpeg -version` | CLI access | UNAVAILABLE | `ffmpeg` command not found in system PATH; OpenCV built-in videoio DLL used instead | External FFmpeg CLI not installed in Windows PATH |
+| GStreamer Media Framework | Hardware-accelerated pipeline decoding (`gst-launch-1.0`) | Windows PATH GStreamer binaries | NO | `gst-launch-1.0` | CLI access | UNAVAILABLE | `gst-launch-1.0` command not found in system PATH | GStreamer runtime not installed on host |
 | Model Weights Storage | Pre-trained weights for vehicle detection & ANPR | Ultralytics / Hugging Face / Custom storage | NO | UNKNOWN | UNKNOWN | UNVERIFIED | No weights or model files present in workspace | Model selection pending challenge specifications |
+
 
 ---
 

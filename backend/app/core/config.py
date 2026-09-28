@@ -22,9 +22,18 @@ class Settings(BaseSettings):
     SENTINEL_STREAM_HOST: Optional[str] = None
     SENTINEL_CATALOGUE_TIMEOUT_SECONDS: float = 5.0
     
-    # RTSP Ingestion Transport Invariants (Section 8: Phase 3)
+    # RTSP Ingestion Transport Invariants (Section 8: Phase 3 & Stage 5)
     RTSP_TRANSPORT: Literal["tcp"] = "tcp"  # Strict invariant: ALWAYS FORCE TCP
     RTSP_CONNECT_TIMEOUT_MS: int = 5000
+    
+    # Stream Ingestion Engine (Stage 5 Architecture)
+    STREAM_RING_BUFFER_SIZE: int = 15
+    STREAM_RECONNECT_BASE_DELAY: float = 1.0
+    STREAM_RECONNECT_MAX_DELAY: float = 30.0
+    STREAM_RECONNECT_FACTOR: float = 2.0
+    STREAM_HEALTH_WATCHDOG_TIMEOUT_SECONDS: float = 10.0
+    STREAM_CONSECUTIVE_FRAMES_FOR_HEALTH: int = 5
+
     
     # Security
     SECRET_KEY: str = "development-only-insecure-secret-key-do-not-use-in-production-min32c"

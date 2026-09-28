@@ -55,6 +55,7 @@ class Detection(Base):
         nullable=True
     )
     plate_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    raw_text: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     vehicle_type: Mapped[str] = mapped_column(String(30), nullable=False)
     confidence_vehicle: Mapped[float] = mapped_column(Float, nullable=False)
     confidence_plate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -62,6 +63,7 @@ class Detection(Base):
     bbox_plate: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)  # [x1, y1, x2, y2]
     snapshot_path: Mapped[str] = mapped_column(String(500), nullable=False)
     plate_crop_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    detection_metadata: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -22,6 +22,8 @@
 | ASM-014 | 2026-09-28 | Pluggable Detector Default | `MockObjectDetector` serves as the verified default provider for offline testing and CI; `ONNXRuntimeObjectDetector` is instantiated and loaded dynamically when model weights are provided via `VEHICLE_DETECTOR_MODEL_PATH`. | Required by Section 4 & 8 of Stage 6 Directive. | Low | VERIFIED |
 | ASM-015 | 2026-09-28 | Cross-Coordinate Transformation | License plate bounding boxes detected inside a vehicle crop are deterministically mapped to the original frame space via $x_f = x_v + x_{veh}$ and $y_f = y_v + y_{veh}$, bounded by source frame resolution. | Required by Section 7 of Stage 7 Directive. | Low | VERIFIED |
 | ASM-016 | 2026-09-28 | Indian Plate Syntax Validation | Normalized license plate strings are validated against authoritative Indian Motor Vehicle registration regex patterns (Standard State Series and Bharat Series) with safe positional character correction for OCR confusion. | Required by Sections 12 & 13 of Stage 7 Directive. | Low | VERIFIED |
+| ASM-017 | 2026-09-28 | Observation Timestamp Invariant | Video presentation timestamp `video_pts_ms` is the sole source for the observation timestamp `detected_at` (`datetime.fromtimestamp(pts / 1000.0, tz=timezone.utc)`), strictly isolated from database write time `created_at`. | Required by Section 5 of Stage 8 Directive. | Low | VERIFIED |
+| ASM-018 | 2026-09-28 | Cross-Dialect Datetime Handling | SQLAlchemy `DateTime(timezone=True)` returns offset-naive datetimes in SQLite and offset-aware in PostgreSQL; application normalization via `ensure_utc` guarantees deterministic comparison. | Confirmed by SQLite driver specification and verified by test suite. | Low | VERIFIED |
 
 
 

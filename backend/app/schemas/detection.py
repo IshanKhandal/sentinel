@@ -8,7 +8,9 @@ Protocol Standards:
 """
 
 import math
-from typing import Optional, List, Tuple, Literal
+import uuid
+from datetime import datetime
+from typing import Optional, List, Tuple, Literal, Dict, Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -100,3 +102,34 @@ class DetectorStatusResponse(BaseModel):
     frames_skipped: int = Field(default=0, ge=0, description="Frames skipped due to FPS sampling decimation")
     total_vehicles_detected: int = Field(default=0, ge=0, description="Total vehicle objects detected")
     last_inference_latency_ms: Optional[float] = Field(default=None, description="Most recent inference duration in ms")
+
+
+class DetectionRead(BaseModel):
+    """Schema representing a persisted frame-level vehicle and plate detection record."""
+
+    id: uuid.UUID = Field(..., description="Unique detection observation UUID")
+    camera_id: uuid.UUID = Field(..., description="Surveillance camera UUID")
+    camera_name: Optional[str] = Field(default=None, description="Descriptive camera identifier")
+    vehicle_id: Optional[uuid.UUID] = Field(default=None, description="Canonical vehicle profile UUID if plate identified")
+    plate_number: Optional[str] = Field(default=None, description="Sanitized uppercase plate registration number")
+    raw_text: Optional[str] = Field(default=None, description="Unmodified raw OCR transcription")
+    vehicle_type: str = Field(..., description="Vehicle category (e.g. CAR, TRUCK, MOTORCYCLE, BUS)")
+    confidence_vehicle: float = Field(..., description="Vehicle detector confidence score")
+    confidence_plate: Optional[float] = Field(default=None, description="Plate detector or OCR confidence score")
+    bbox_vehicle: Any = Field(..., description="Vehicle bounding box coordinates [x1, y1, x2, y2]")
+    bbox_plate: Optional[Any] = Field(default=None, description="Plate bounding box coordinates [x1, y1, x2, y2]")
+    snapshot_path: str = Field(..., description="Storage URI or path to frame/vehicle visual snapshot")
+    plate_crop_path: Optional[str] = Field(default=None, description="Storage URI or path to plate crop image")
+    is_demo: bool = Field(default=False, description="Whether detection originated from synthetic or demo fixture")
+    detected_at: datetime = Field(..., description="Authoritative video presentation timestamp as UTC datetime")
+    created_at: datetime = Field(..., description="Database record insertion timestamp")
+    detection_metadata: Optional[Dict[str, Any]] = Field(default=None, description="Inference engine telemetry")
+
+    model_config = {"from_attributes": True}
+
+
+class DetectionListResponse(BaseModel):
+    """Paginated list of persisted detection records matching search criteria."""
+
+    total: int = Field(..., ge=0, description="Total matching detections count")
+    items: List[DetectionRead] = Field(default_factory=list, description="List of detection records")

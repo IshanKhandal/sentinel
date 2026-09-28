@@ -190,17 +190,19 @@ The schema is organized into 6 logical domains designed to avoid redundancy whil
   - `id`: `UUID` (Primary Key)
   - `camera_id`: `UUID` (Foreign Key -> `cameras.id` ON DELETE RESTRICT)
   - `vehicle_id`: `UUID` (Foreign Key -> `vehicles.id` ON DELETE SET NULL, Nullable)
-  - `plate_number`: `VARCHAR(20)` (Nullable, Null if plate obscured or vehicle detected without plate)
-  - `vehicle_type`: `VARCHAR(30)` (Not Null)
+  - `plate_number`: `VARCHAR(20)` (Nullable, Null if plate obscured or vehicle detected without plate; sanitized normalized uppercase)
+  - `raw_text`: `VARCHAR(50)` (Nullable, added in migration `f1a891746c72`; unmodified OCR provider transcription)
+  - `vehicle_type`: `VARCHAR(30)` (Not Null, e.g. `CAR`, `TRUCK`, `BUS`, `MOTORCYCLE`)
   - `confidence_vehicle`: `FLOAT` (Not Null)
   - `confidence_plate`: `FLOAT` (Nullable)
   - `bbox_vehicle`: `JSONB` (Not Null, `[x1, y1, x2, y2]`)
   - `bbox_plate`: `JSONB` (Nullable, `[x1, y1, x2, y2]`)
   - `snapshot_path`: `VARCHAR(500)` (Not Null)
   - `plate_crop_path`: `VARCHAR(500)` (Nullable)
+  - `detection_metadata`: `JSONB` (Nullable, added in migration `f1a891746c72`; stores OCR provider, model version, PTS, preprocessing variant)
   - `is_demo`: `BOOLEAN` (Not Null, Default: FALSE)
-  - `detected_at`: `TIMESTAMPTZ` (Not Null)
-  - `created_at`: `TIMESTAMPTZ` (Default: `CURRENT_TIMESTAMP`)
+  - `detected_at`: `TIMESTAMPTZ` (Not Null, Authoritative video PTS as UTC timestamp)
+  - `created_at`: `TIMESTAMPTZ` (Default: `CURRENT_TIMESTAMP`, Database record insertion timestamp)
 - **Crucial Indexes for Performance:**
   - `idx_detections_plate_time` ON (`plate_number`, `detected_at` DESC) — **Primary Plate Search Index**
   - `idx_detections_cam_time` ON (`camera_id`, `detected_at` DESC) — **Camera Stream Query Index**

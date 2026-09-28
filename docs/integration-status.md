@@ -30,6 +30,9 @@
 | OCR Subsystem & Normalization | Text recognition, raw preservation, Indian plate syntax regex validation | `backend/app/services/anpr/ocr_provider.py`, `normalization.py`, `preprocessing.py` | YES | Internal Service | Application context | VERIFIED WORKING | 21 unit/API tests passing; safe contextual correction and separate confidences verified | None |
 | Real Sentinel Stream ANPR Inference | Full ANPR pipeline executed against live official Sentinel stream | Sentinel RTSP Feeds | NO | `rtsp://<host>:8554/...` | UNKNOWN | BLOCKED | Sentinel stream host is unconfigured; zero live cameras accessible | External host address UNKNOWN / BLOCKED |
 | ANPR Accuracy Benchmark | Empirical character and plate recognition accuracy on test dataset | Recorded benchmark logs | NO | Benchmark Harness | Test Evaluation Dataset | NOT BENCHMARKED | No recorded benchmark logs exist; adheres strictly to Rule 10 | Benchmark dataset unconfigured |
+| Event Persistence Engine | Transactional persistence of vehicle detections and ANPR observations | `backend/app/services/event_persistence.py` | YES | Internal Service | Application context | VERIFIED WORKING | 14 unit/API tests passing; atomic transactions, FK enforcement, PTS timestamp preservation verified | None |
+| Detections & Vehicle Store | Relational storage with crucial indexes (plate_time, cam_time, detected_at) | SQLite `sentinel.db` / Alembic migration `f1a891746c72` | YES | Local SQLite Engine | Local filesystem | VERIFIED WORKING | Schema evolution verified; migration upgrade/downgrade/re-upgrade verified | PostgreSQL production server not installed locally |
+| Persistence Performance Benchmark | Measurement of sustained events/sec and write latency under load | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | No benchmark executed; adheres strictly to Rule 10 | Benchmark dataset/harness unconfigured |
 
 
 

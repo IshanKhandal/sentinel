@@ -60,4 +60,17 @@ The system formally supports **EXACTLY TWO** mutually isolated operational modes
   - `MAP TILES UNAVAILABLE`: Displayed when network connection to the tile server fails or times out.
   - `LIVE DATA`: Displayed only when verified camera coordinates from the official Sentinel catalogue are actively plotted.
 - **Unmapped Camera Drawer:** Cameras lacking verified coordinates are explicitly listed in an "Unmapped Cameras" panel with their ID and reason (`No verified coordinates`), ensuring operator visibility without geographic fabrication.
+ 
+---
+
+## 5. ANPR & OCR Visual Debugger Data-State Fidelity
+
+- **Visual Annotations Banner:** Every debug snapshot rendered via `/api/v1/anpr/debug-snapshot/{camera_id}` carries an explicit banner:
+  ```text
+  [DEBUG/TEST ONLY] CAM: <camera_id> | PTS: <pts_ms> | PLATES READ: <count>
+  ```
+- **Fidelity Guarantee:**
+  - Bounding boxes are rendered in the exact source camera frame pixel coordinates.
+  - OCR transcription is rendered with raw character confidence.
+  - Invalid crops or unreadable plates are labeled `INVALID_CROP` or `OCR_UNREADABLE`; plate text is NEVER fabricated.
 

@@ -20,6 +20,8 @@
 | ASM-012 | 2026-09-28 | PTS Observation Clock Invariant | Authoritative observation time is strictly bound to stream PTS (`CAP_PROP_POS_MSEC`); system clock `time.monotonic()` is quarantined to internal connection watchdog and diagnostic metrics. | Required by Section 9 of Stage 5 Directive. | Low | VERIFIED |
 | ASM-013 | 2026-09-28 | Detection Coordinate Standard | Vehicle bounding box coordinates `(x1, y1, x2, y2)` are strictly represented in the source camera frame pixel coordinate system by reversing symmetric letterbox padding and scaling. | Required by Section 20 & 21 of Stage 6 Directive. | Low | VERIFIED |
 | ASM-014 | 2026-09-28 | Pluggable Detector Default | `MockObjectDetector` serves as the verified default provider for offline testing and CI; `ONNXRuntimeObjectDetector` is instantiated and loaded dynamically when model weights are provided via `VEHICLE_DETECTOR_MODEL_PATH`. | Required by Section 4 & 8 of Stage 6 Directive. | Low | VERIFIED |
+| ASM-015 | 2026-09-28 | Cross-Coordinate Transformation | License plate bounding boxes detected inside a vehicle crop are deterministically mapped to the original frame space via $x_f = x_v + x_{veh}$ and $y_f = y_v + y_{veh}$, bounded by source frame resolution. | Required by Section 7 of Stage 7 Directive. | Low | VERIFIED |
+| ASM-016 | 2026-09-28 | Indian Plate Syntax Validation | Normalized license plate strings are validated against authoritative Indian Motor Vehicle registration regex patterns (Standard State Series and Bharat Series) with safe positional character correction for OCR confusion. | Required by Sections 12 & 13 of Stage 7 Directive. | Low | VERIFIED |
 
 
 

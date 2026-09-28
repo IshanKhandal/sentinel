@@ -26,6 +26,10 @@
 | CUDA / GPU Acceleration | Hardware acceleration on NVIDIA GeForce RTX 2050 | NVIDIA Driver 610.47 / CUDA 13.3 | NO | GPU / CUDA Runtime | Local GPU hardware | UNAVAILABLE IN PYTHON 3.14 | RTX 2050 detected via `nvidia-smi`; however, Python 3.14 lacks pre-built `onnxruntime-gpu` or `torch` CUDA wheels | Python 3.14 CUDA packages not yet published |
 | Real Sentinel Stream Vehicle Inference | Real-time object detection against official Sentinel feeds | Sentinel RTSP Feeds | NO | `rtsp://<host>:8554/...` | UNKNOWN | BLOCKED | Sentinel stream host is unconfigured; zero live cameras accessible | External host address UNKNOWN / BLOCKED |
 | Model Weights Storage | Pre-trained weights for vehicle detection & ANPR | Ultralytics / Hugging Face / Custom storage | NO | UNKNOWN | UNKNOWN | UNVERIFIED | No weights or model files present in workspace | Model selection pending challenge specifications |
+| Plate Detection Pipeline | Localization of license plate within vehicle crop | `backend/app/services/anpr/plate_detector.py` | YES | Internal Service | Application context | VERIFIED WORKING | 21 unit/API tests passing; vehicle-crop to frame coordinate transformation verified | None |
+| OCR Subsystem & Normalization | Text recognition, raw preservation, Indian plate syntax regex validation | `backend/app/services/anpr/ocr_provider.py`, `normalization.py`, `preprocessing.py` | YES | Internal Service | Application context | VERIFIED WORKING | 21 unit/API tests passing; safe contextual correction and separate confidences verified | None |
+| Real Sentinel Stream ANPR Inference | Full ANPR pipeline executed against live official Sentinel stream | Sentinel RTSP Feeds | NO | `rtsp://<host>:8554/...` | UNKNOWN | BLOCKED | Sentinel stream host is unconfigured; zero live cameras accessible | External host address UNKNOWN / BLOCKED |
+| ANPR Accuracy Benchmark | Empirical character and plate recognition accuracy on test dataset | Recorded benchmark logs | NO | Benchmark Harness | Test Evaluation Dataset | NOT BENCHMARKED | No recorded benchmark logs exist; adheres strictly to Rule 10 | Benchmark dataset unconfigured |
 
 
 

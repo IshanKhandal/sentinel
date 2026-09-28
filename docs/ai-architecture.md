@@ -151,10 +151,14 @@ latency_ms = (time.perf_counter_ns() - t_start) / 1_000_000.0
 
 ## 4. Current Verification Baseline
  
-- **Verified Models in Workspace:** External model weights unconfigured; `MockObjectDetector` active as verified offline baseline.
+- **Verified Models in Workspace:** External model weights unconfigured; `MockObjectDetector`, `MockPlateDetector`, and `MockOCRProvider` active as verified offline baselines.
 - **Claimed Accuracies:** NOT BENCHMARKED (Strict Rule 10 adherence: no accuracy or performance claims permitted without recorded benchmark logs).
 - **Supported Implementations Built & Verified:**
   1. `MockObjectDetector` ([backend/app/services/detection/mock_detector.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/detection/mock_detector.py)): Verified for offline testing, CI integration, and deterministic test fixtures.
   2. `ONNXRuntimeObjectDetector` ([backend/app/services/detection/onnx_detector.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/detection/onnx_detector.py)): Verified for production execution with ONNX Runtime 1.28.0 (`CPUExecutionProvider` active).
   3. `VehicleDetectionService` ([backend/app/services/detection/service.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/detection/service.py)): Integrated with Stage 5 stream buffer, frame sampling decimation, and visual debugger overlay.
+  4. `MockPlateDetector` & `ONNXRuntimePlateDetector` ([backend/app/services/anpr/plate_detector.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/anpr/plate_detector.py)): Verified plate localization within vehicle crops with frame coordinate projection.
+  5. `MockOCRProvider` & `ONNXRuntimeOCRProvider` ([backend/app/services/anpr/ocr_provider.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/anpr/ocr_provider.py)): Verified raw text transcription and CTC decoding wrappers.
+  6. `PlatePreprocessor` ([backend/app/services/anpr/preprocessing.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/anpr/preprocessing.py)): Modular aspect-ratio preserving enhancement filters (standard CLAHE+bilateral, clahe, grayscale, raw).
+  7. `ANPRPipelineService` ([backend/app/services/anpr/pipeline.py](file:///c:/Users/ishan/sentinel%20gujarat%20hackathon/backend/app/services/anpr/pipeline.py)): Stage 7 domain pipeline chaining Stage 6 vehicle detections to normalized ANPR results with separate detector and OCR confidences.
 

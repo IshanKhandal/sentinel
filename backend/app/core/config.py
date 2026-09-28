@@ -41,6 +41,16 @@ class Settings(BaseSettings):
     VEHICLE_IOU_THRESHOLD: float = 0.45
     DETECTION_FPS_LIMIT: float = 5.0
 
+    # Plate Detection & OCR / ANPR Pipeline (Stage 7 Architecture)
+    PLATE_DETECTOR_BACKEND: Literal["MOCK", "ONNX_RUNTIME"] = "MOCK"
+    PLATE_DETECTOR_MODEL_PATH: Optional[str] = None
+    PLATE_CONFIDENCE_THRESHOLD: float = 0.40
+    OCR_PROVIDER_BACKEND: Literal["MOCK", "ONNX_RUNTIME"] = "MOCK"
+    OCR_MODEL_PATH: Optional[str] = None
+    OCR_CONFIDENCE_THRESHOLD: float = 0.50
+    ANPR_PREPROCESSING_VARIANT: Literal["standard", "clahe", "grayscale", "raw"] = "standard"
+
+
 
     
     # Security

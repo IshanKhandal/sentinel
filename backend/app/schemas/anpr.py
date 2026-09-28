@@ -62,6 +62,7 @@ class ANPRResult(BaseModel):
     frame_index: Optional[int] = Field(default=None, description="Sequential stream frame index")
     vehicle_class: str = Field(..., description="Detected vehicle category (e.g. car, truck, bus, motorcycle)")
     vehicle_bbox: BoundingBox = Field(..., description="Vehicle bounding box in original frame pixel coordinates")
+    vehicle_confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Vehicle detector confidence score")
     plate_bbox_frame: Optional[BoundingBox] = Field(default=None, description="Plate bounding box in original frame pixel coordinates")
     plate_bbox_vehicle: Optional[BoundingBox] = Field(default=None, description="Plate bounding box in vehicle crop coordinates")
     raw_text: Optional[str] = Field(default=None, description="Raw transcription directly from OCR engine")

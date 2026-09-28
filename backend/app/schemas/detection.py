@@ -114,7 +114,7 @@ class DetectionRead(BaseModel):
     plate_number: Optional[str] = Field(default=None, description="Sanitized uppercase plate registration number")
     raw_text: Optional[str] = Field(default=None, description="Unmodified raw OCR transcription")
     vehicle_type: str = Field(..., description="Vehicle category (e.g. CAR, TRUCK, MOTORCYCLE, BUS)")
-    confidence_vehicle: float = Field(..., description="Vehicle detector confidence score")
+    confidence_vehicle: Optional[float] = Field(default=None, description="Vehicle detector confidence score")
     confidence_plate: Optional[float] = Field(default=None, description="Plate detector or OCR confidence score")
     bbox_vehicle: Any = Field(..., description="Vehicle bounding box coordinates [x1, y1, x2, y2]")
     bbox_plate: Optional[Any] = Field(default=None, description="Plate bounding box coordinates [x1, y1, x2, y2]")

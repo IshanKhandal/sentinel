@@ -193,7 +193,7 @@ The schema is organized into 6 logical domains designed to avoid redundancy whil
   - `plate_number`: `VARCHAR(20)` (Nullable, Null if plate obscured or vehicle detected without plate; sanitized normalized uppercase)
   - `raw_text`: `VARCHAR(50)` (Nullable, added in migration `f1a891746c72`; unmodified OCR provider transcription)
   - `vehicle_type`: `VARCHAR(30)` (Not Null, e.g. `CAR`, `TRUCK`, `BUS`, `MOTORCYCLE`)
-  - `confidence_vehicle`: `FLOAT` (Not Null)
+  - `confidence_vehicle`: `FLOAT` (Nullable, None when vehicle detector score unavailable)
   - `confidence_plate`: `FLOAT` (Nullable)
   - `bbox_vehicle`: `JSONB` (Not Null, `[x1, y1, x2, y2]`)
   - `bbox_plate`: `JSONB` (Nullable, `[x1, y1, x2, y2]`)

@@ -45,7 +45,7 @@ class VehicleObservationItem(BaseModel):
     detected_at: datetime = Field(..., description="Authoritative observation timestamp derived from video PTS")
     video_pts_ms: Optional[float] = Field(default=None, description="Video presentation timestamp in milliseconds")
     vehicle_type: str = Field(..., description="Classified vehicle type")
-    confidence_vehicle: float = Field(..., description="Vehicle detection model confidence score")
+    confidence_vehicle: Optional[float] = Field(default=None, description="Vehicle detection model confidence score")
     confidence_plate: Optional[float] = Field(default=None, description="Plate OCR confidence score")
     plate_number: Optional[str] = Field(default=None, description="Sanitized normalized license plate")
     raw_text: Optional[str] = Field(default=None, description="Raw unmodified OCR provider transcription")

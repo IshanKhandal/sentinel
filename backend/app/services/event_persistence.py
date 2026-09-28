@@ -92,30 +92,39 @@ class EventPersistenceService:
         clean_plate = plate_number.strip().upper()
         vehicle = db.query(Vehicle).filter(Vehicle.plate_number == clean_plate).first()
 
-        if vehicle:
-            # Update temporal envelope with timezone safety for SQLite/PostgreSQL
-            dt_aware = ensure_utc(detected_at)
-            last_aware = ensure_utc(vehicle.last_seen_at)
-            first_aware = ensure_utc(vehicle.first_seen_at)
+        if not vehicle:
+            try:
+                with db.begin_nested():
+                    vehicle = Vehicle(
+                        id=uuid.uuid4(),
+                        plate_number=clean_plate,
+                        vehicle_type=vehicle_type.upper() if vehicle_type else None,
+                        first_seen_at=detected_at,
+                        last_seen_at=detected_at,
+                        total_detections_count=1
+                    )
+                    db.add(vehicle)
+                    db.flush()
+                return vehicle
+            except IntegrityError:
+                # Concurrent insert conflict on plate_number uniqueness; query existing profile
+                vehicle = db.query(Vehicle).filter(Vehicle.plate_number == clean_plate).first()
+                if not vehicle:
+                    raise
 
-            if dt_aware > last_aware:
-                vehicle.last_seen_at = detected_at
-            if dt_aware < first_aware:
-                vehicle.first_seen_at = detected_at
-            vehicle.total_detections_count += 1
-            if not vehicle.vehicle_type and vehicle_type:
-                vehicle.vehicle_type = vehicle_type.upper()
-        else:
-            vehicle = Vehicle(
-                id=uuid.uuid4(),
-                plate_number=clean_plate,
-                vehicle_type=vehicle_type.upper() if vehicle_type else None,
-                first_seen_at=detected_at,
-                last_seen_at=detected_at,
-                total_detections_count=1
-            )
-            db.add(vehicle)
-            db.flush()
+        # Update existing profile
+        dt_aware = ensure_utc(detected_at)
+        last_aware = ensure_utc(vehicle.last_seen_at)
+        first_aware = ensure_utc(vehicle.first_seen_at)
+
+        if dt_aware > last_aware:
+            vehicle.last_seen_at = detected_at
+        if dt_aware < first_aware:
+            vehicle.first_seen_at = detected_at
+        vehicle.total_detections_count = Vehicle.total_detections_count + 1
+        if not vehicle.vehicle_type and vehicle_type:
+            vehicle.vehicle_type = vehicle_type.upper()
+        db.flush()
 
         return vehicle
 
@@ -188,6 +197,7 @@ class EventPersistenceService:
         metadata = {
             "video_pts_ms": anpr_result.video_pts_ms,
             "frame_index": anpr_result.frame_index,
+            "vehicle_confidence": anpr_result.vehicle_confidence,
             "plate_detector_confidence": anpr_result.plate_detector_confidence,
             "ocr_confidence": anpr_result.ocr_confidence,
             "ocr_provider": anpr_result.ocr_provider,
@@ -199,6 +209,11 @@ class EventPersistenceService:
         }
 
         # 5. Create Detection Record
+        conf_vehicle = (
+            float(anpr_result.vehicle_confidence)
+            if anpr_result.vehicle_confidence is not None
+            else None
+        )
         detection = Detection(
             id=uuid.uuid4(),
             camera_id=camera_uuid,
@@ -206,7 +221,7 @@ class EventPersistenceService:
             plate_number=clean_plate,
             raw_text=anpr_result.raw_text,
             vehicle_type=anpr_result.vehicle_class.upper(),
-            confidence_vehicle=float(anpr_result.plate_detector_confidence or 0.85),
+            confidence_vehicle=conf_vehicle,
             confidence_plate=anpr_result.ocr_confidence,
             bbox_vehicle=v_bbox,
             bbox_plate=p_bbox,
@@ -372,6 +387,7 @@ class EventPersistenceService:
                 metadata = {
                     "video_pts_ms": r.video_pts_ms,
                     "frame_index": r.frame_index,
+                    "vehicle_confidence": r.vehicle_confidence,
                     "plate_detector_confidence": r.plate_detector_confidence,
                     "ocr_confidence": r.ocr_confidence,
                     "ocr_provider": r.ocr_provider,
@@ -382,6 +398,11 @@ class EventPersistenceService:
                     "total_latency_ms": r.total_latency_ms,
                 }
 
+                conf_v = (
+                    float(r.vehicle_confidence)
+                    if r.vehicle_confidence is not None
+                    else None
+                )
                 det = Detection(
                     id=uuid.uuid4(),
                     camera_id=camera_uuid,
@@ -389,7 +410,7 @@ class EventPersistenceService:
                     plate_number=clean_plate,
                     raw_text=r.raw_text,
                     vehicle_type=r.vehicle_class.upper(),
-                    confidence_vehicle=float(r.plate_detector_confidence or 0.85),
+                    confidence_vehicle=conf_v,
                     confidence_plate=r.ocr_confidence,
                     bbox_vehicle=v_bbox,
                     bbox_plate=p_bbox,

@@ -57,7 +57,7 @@ class Detection(Base):
     plate_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     raw_text: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     vehicle_type: Mapped[str] = mapped_column(String(30), nullable=False)
-    confidence_vehicle: Mapped[float] = mapped_column(Float, nullable=False)
+    confidence_vehicle: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     confidence_plate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     bbox_vehicle: Mapped[Any] = mapped_column(JSON, nullable=False)  # [x1, y1, x2, y2]
     bbox_plate: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)  # [x1, y1, x2, y2]

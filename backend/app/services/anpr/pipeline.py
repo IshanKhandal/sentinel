@@ -152,6 +152,7 @@ class ANPRPipelineService:
                         frame_index=frame.frame_index,
                         vehicle_class=v_det.class_name,
                         vehicle_bbox=v_det.bbox,
+                        vehicle_confidence=v_det.confidence,
                         status="INVALID_CROP",
                         total_latency_ms=round((time.perf_counter_ns() - t_vehicle_start) / 1_000_000.0, 2)
                     )
@@ -176,6 +177,7 @@ class ANPRPipelineService:
                         frame_index=frame.frame_index,
                         vehicle_class=v_det.class_name,
                         vehicle_bbox=v_det.bbox,
+                        vehicle_confidence=v_det.confidence,
                         status="OCR_ERROR",
                         total_latency_ms=round((time.perf_counter_ns() - t_vehicle_start) / 1_000_000.0, 2)
                     )
@@ -190,6 +192,7 @@ class ANPRPipelineService:
                         frame_index=frame.frame_index,
                         vehicle_class=v_det.class_name,
                         vehicle_bbox=v_det.bbox,
+                        vehicle_confidence=v_det.confidence,
                         status="NO_PLATE",
                         total_latency_ms=round((time.perf_counter_ns() - t_vehicle_start) / 1_000_000.0, 2)
                     )
@@ -219,6 +222,7 @@ class ANPRPipelineService:
                             frame_index=frame.frame_index,
                             vehicle_class=v_det.class_name,
                             vehicle_bbox=v_det.bbox,
+                            vehicle_confidence=v_det.confidence,
                             plate_bbox_frame=p_det.bbox_frame,
                             plate_bbox_vehicle=p_det.bbox_relative,
                             plate_detector_confidence=p_det.confidence,
@@ -249,6 +253,7 @@ class ANPRPipelineService:
                             frame_index=frame.frame_index,
                             vehicle_class=v_det.class_name,
                             vehicle_bbox=v_det.bbox,
+                            vehicle_confidence=v_det.confidence,
                             plate_bbox_frame=p_det.bbox_frame,
                             plate_bbox_vehicle=p_det.bbox_relative,
                             plate_detector_confidence=p_det.confidence,
@@ -281,6 +286,7 @@ class ANPRPipelineService:
                         frame_index=frame.frame_index,
                         vehicle_class=v_det.class_name,
                         vehicle_bbox=v_det.bbox,
+                        vehicle_confidence=v_det.confidence,
                         plate_bbox_frame=p_det.bbox_frame,
                         plate_bbox_vehicle=p_det.bbox_relative,
                         raw_text=ocr_res.raw_text,

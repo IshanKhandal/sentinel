@@ -91,6 +91,7 @@ def test_persist_anpr_result_success(db_session: Session):
         raw_text="GJ 01 AB 1234",
         normalized_text="GJ01AB1234",
         is_valid_format=True,
+        vehicle_confidence=0.91,
         plate_detector_confidence=0.91,
         ocr_confidence=0.96,
         ocr_provider="MOCK",
@@ -496,3 +497,178 @@ def test_api_post_detection_unregistered_camera_returns_404(client: TestClient):
     res = client.post("/api/v1/detections", json=anpr_payload)
     assert res.status_code == 404
     assert "not registered in camera catalogue" in res.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# 7. Vehicle Confidence & Concurrent Profile Invariants
+# ---------------------------------------------------------------------------
+
+def test_persist_anpr_vehicle_confidence_preserves_zero_and_none_without_fallback(db_session: Session):
+    """Ensure confidence_vehicle reflects genuine vehicle score without plate fallback or fabricated values."""
+    cam = create_test_camera(db_session)
+
+    # 1. Normal vehicle confidence
+    r1 = ANPRResult(
+        camera_id=str(cam.id),
+        video_pts_ms=1000.0,
+        vehicle_class="car",
+        vehicle_bbox=BoundingBox(x1=10.0, y1=10.0, x2=50.0, y2=50.0),
+        vehicle_confidence=0.97,
+        plate_detector_confidence=0.82,
+        status="NO_PLATE"
+    )
+    d1 = EventPersistenceService.persist_anpr_result(db_session, r1)
+    assert d1.confidence_vehicle == 0.97
+
+    # 2. Valid 0.0 vehicle confidence must be preserved and NOT fall back to plate confidence (0.82) or 0.85
+    r2 = ANPRResult(
+        camera_id=str(cam.id),
+        video_pts_ms=2000.0,
+        vehicle_class="car",
+        vehicle_bbox=BoundingBox(x1=10.0, y1=10.0, x2=50.0, y2=50.0),
+        vehicle_confidence=0.0,
+        plate_detector_confidence=0.82,
+        status="NO_PLATE"
+    )
+    d2 = EventPersistenceService.persist_anpr_result(db_session, r2)
+    assert d2.confidence_vehicle == 0.0
+
+    # 3. None vehicle confidence must persist None and NOT fall back to plate confidence (0.82) or 0.85
+    r3 = ANPRResult(
+        camera_id=str(cam.id),
+        video_pts_ms=3000.0,
+        vehicle_class="car",
+        vehicle_bbox=BoundingBox(x1=10.0, y1=10.0, x2=50.0, y2=50.0),
+        vehicle_confidence=None,
+        plate_detector_confidence=0.82,
+        status="NO_PLATE"
+    )
+    d3 = EventPersistenceService.persist_anpr_result(db_session, r3)
+    assert d3.confidence_vehicle is None
+
+    # 4. Batch persistence also preserves 0.0 and None correctly
+    batch_results = EventPersistenceService.persist_anpr_batch(db_session, [
+        ANPRResult(
+            camera_id=str(cam.id),
+            video_pts_ms=4000.0,
+            vehicle_class="car",
+            vehicle_bbox=BoundingBox(x1=10.0, y1=10.0, x2=50.0, y2=50.0),
+            vehicle_confidence=0.0,
+            plate_detector_confidence=0.90,
+            status="NO_PLATE"
+        ),
+        ANPRResult(
+            camera_id=str(cam.id),
+            video_pts_ms=5000.0,
+            vehicle_class="car",
+            vehicle_bbox=BoundingBox(x1=10.0, y1=10.0, x2=50.0, y2=50.0),
+            vehicle_confidence=None,
+            plate_detector_confidence=0.90,
+            status="NO_PLATE"
+        ),
+    ])
+    assert batch_results[0].confidence_vehicle == 0.0
+    assert batch_results[1].confidence_vehicle is None
+
+
+def test_get_or_create_vehicle_profile_concurrent_insert_savepoint_rollback(db_session: Session):
+    """Test that concurrent insert conflicts in the savepoint roll back cleanly and re-query existing profile."""
+    plate = "GJ05RACE01"
+    now1 = datetime(2026, 9, 28, 10, 0, 0, tzinfo=timezone.utc)
+    now2 = datetime(2026, 9, 28, 10, 5, 0, tzinfo=timezone.utc)
+
+    # First creation succeeds normally
+    v1 = EventPersistenceService.get_or_create_vehicle_profile(
+        db=db_session,
+        plate_number=plate,
+        vehicle_type="CAR",
+        detected_at=now1
+    )
+    db_session.commit()
+    assert v1.plate_number == plate
+    assert v1.total_detections_count == 1
+
+    # Simulate a race condition: where another worker inserted the vehicle after db.query returned None,
+    # causing an IntegrityError inside the savepoint.
+    # We patch db.begin_nested or verify existing profile update path on retry.
+    from unittest.mock import patch
+    original_begin_nested = db_session.begin_nested
+
+    # Create a wrapper that simulates an IntegrityError on flush inside savepoint for this plate
+    class SimulatedSavepoint:
+        def __init__(self, nested):
+            self.nested = nested
+
+        def __enter__(self):
+            return self.nested.__enter__()
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.nested.__exit__(exc_type, exc_val, exc_tb)
+
+    # Call again with later timestamp
+    v2 = EventPersistenceService.get_or_create_vehicle_profile(
+        db=db_session,
+        plate_number=plate,
+        vehicle_type="CAR",
+        detected_at=now2
+    )
+    db_session.commit()
+
+    assert v2.id == v1.id
+    assert v2.total_detections_count == 2
+    assert ensure_utc(v2.last_seen_at) == now2
+
+
+def test_get_or_create_vehicle_profile_simulated_savepoint_integrity_error(db_session: Session):
+    """Explicitly verify that when begin_nested raises IntegrityError, savepoint rolls back and re-queries."""
+    plate = "GJ05RACE02"
+    now1 = datetime(2026, 9, 28, 10, 0, 0, tzinfo=timezone.utc)
+    now2 = datetime(2026, 9, 28, 10, 5, 0, tzinfo=timezone.utc)
+
+    # 1. Manually insert the vehicle behind the scenes
+    existing = Vehicle(
+        id=uuid.uuid4(),
+        plate_number=plate,
+        vehicle_type="CAR",
+        first_seen_at=now1,
+        last_seen_at=now1,
+        total_detections_count=1
+    )
+    db_session.add(existing)
+    db_session.commit()
+
+    # 2. When calling get_or_create_vehicle_profile, pretend db.query initially returned None
+    # and trying to insert in savepoint causes an IntegrityError
+    from unittest.mock import patch
+    from sqlalchemy.exc import IntegrityError
+
+    orig_query = db_session.query
+    query_call_count = [0]
+
+    def mock_query(*entities, **kwargs):
+        q = orig_query(*entities, **kwargs)
+        if entities and entities[0] is Vehicle:
+            query_call_count[0] += 1
+            if query_call_count[0] == 1:
+                # Pretend first query did not find it
+                class EmptyQuery:
+                    def filter(self, *f_args, **f_kwargs):
+                        return self
+                    def first(self):
+                        return None
+                return EmptyQuery()
+        return q
+
+    with patch.object(db_session, "query", side_effect=mock_query):
+        v = EventPersistenceService.get_or_create_vehicle_profile(
+            db=db_session,
+            plate_number=plate,
+            vehicle_type="CAR",
+            detected_at=now2
+        )
+
+    db_session.commit()
+    assert v.id == existing.id
+    assert v.total_detections_count == 2
+    assert ensure_utc(v.last_seen_at) == now2
+

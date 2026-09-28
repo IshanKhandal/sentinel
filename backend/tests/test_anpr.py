@@ -318,6 +318,7 @@ def test_anpr_pipeline_preserves_pts_and_camera_id():
     assert r.normalized_text is not None
     assert r.plate_detector_confidence is not None
     assert r.ocr_confidence is not None
+    assert r.vehicle_confidence == 0.88
 
 
 # ---------------------------------------------------------------------------

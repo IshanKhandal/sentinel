@@ -70,3 +70,23 @@ class VehicleHistoryResponse(BaseModel):
     limit: int = Field(default=50, description="Page limit applied")
     skip: int = Field(default=0, description="Offset skip applied")
     items: List[VehicleObservationItem] = Field(default_factory=list, description="Chronological observations")
+
+
+# Re-export Stage 12 Cross-Camera Correlation schemas
+from backend.app.schemas.correlation import (  # noqa: E402
+    CameraTransition,
+    JourneyWaypoint,
+    UnmappedWaypoint,
+    VehicleJourneyResponse,
+)
+
+__all__ = [
+    "VehicleProfileRead",
+    "VehicleObservationItem",
+    "VehicleQueryWindow",
+    "VehicleHistoryResponse",
+    "CameraTransition",
+    "JourneyWaypoint",
+    "UnmappedWaypoint",
+    "VehicleJourneyResponse",
+]

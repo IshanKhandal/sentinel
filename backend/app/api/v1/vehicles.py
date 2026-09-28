@@ -18,11 +18,17 @@ from backend.app.schemas.vehicle import (
     VehicleProfileRead,
     VehicleHistoryResponse,
     VehicleQueryWindow,
+    VehicleJourneyResponse,
 )
 from backend.app.services.vehicle import (
     VehicleService,
     VehicleNotFoundError,
     VehicleHistoryValidationError,
+)
+from backend.app.services.correlation import (
+    CorrelationService,
+    CorrelationValidationError,
+    DEFAULT_MAX_SPEED_THRESHOLD_KMH,
 )
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
@@ -105,14 +111,42 @@ def get_vehicle_history(
         ) from exc
 
 
-@router.get("/{plate_number}/journey", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def get_vehicle_journey(plate_number: str):
-    """Placeholder enforcing Stage 11 strict boundary.
-    
-    Trajectory reconstruction and inter-camera velocity estimation are reserved
-    strictly for Stage 12 (Cross-Camera Correlation).
+@router.get("/{plate_number}/journey", response_model=VehicleJourneyResponse)
+@router.get("/{plate_number}/correlation", response_model=VehicleJourneyResponse)
+def get_vehicle_journey(
+    plate_number: str,
+    start_time: Optional[datetime] = Query(default=None, description="Start observation timestamp filter (ISO 8601 UTC)"),
+    end_time: Optional[datetime] = Query(default=None, description="End observation timestamp filter (ISO 8601 UTC)"),
+    max_speed_kmh: float = Query(default=DEFAULT_MAX_SPEED_THRESHOLD_KMH, gt=0.0, description="Maximum physically plausible speed threshold in km/h"),
+    limit: int = Query(default=500, ge=1, le=1000, description="Maximum observations to correlate"),
+    db: Session = Depends(get_db)
+) -> VehicleJourneyResponse:
+    """Reconstruct cross-camera vehicle observation sequence, camera transitions, and implied velocity.
+
+    Contract: docs/api-contract.md Section 7 (`GET /api/v1/vehicles/{plate_number}/journey`).
+
+    Strict Invariants (Stage 12 Directive):
+    - Reads persisted detections only (does not scan live streams).
+    - Preserves authoritative observation timestamp from video PTS.
+    - Groups consecutive same-camera detections into waypoints.
+    - Computes inter-camera transitions (delta_t, Haversine distance, implied speed).
+    - Flags physically implausible transitions (> max_speed_kmh) as ANOMALY.
+    - Missing coordinates remain None (never 0,0); unmapped cameras excluded from polyline.
+    - STRICTLY NO road route inference: LineString connects camera coordinates only.
     """
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Cross-camera trajectory reconstruction and route correlation are reserved for Stage 12."
-    )
+    clean_plate = plate_number.strip().upper()
+    try:
+        return CorrelationService.correlate_vehicle_journey(
+            db=db,
+            plate_number=clean_plate,
+            start_time=start_time,
+            end_time=end_time,
+            max_speed_threshold_kmh=max_speed_kmh,
+            limit=limit,
+        )
+    except CorrelationValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        ) from exc
+

@@ -24,8 +24,8 @@ class Location(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
-    latitude: Mapped[float] = mapped_column(Numeric(10, 7), nullable=False)
-    longitude: Mapped[float] = mapped_column(Numeric(10, 7), nullable=False)
+    latitude: Mapped[Optional[float]] = mapped_column(Numeric(10, 7), nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Numeric(10, 7), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     city: Mapped[str] = mapped_column(String(100), nullable=False)
     state: Mapped[str] = mapped_column(String(100), default="Gujarat", nullable=False)

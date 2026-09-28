@@ -109,4 +109,15 @@ The system formally supports **EXACTLY TWO** mutually isolated operational modes
 - **Missing Coordinate Invariant:** Unmapped cameras or missing registry coordinates serialize strictly as `null` and are never replaced with placeholder coordinates like `(0.0, 0.0)`.
 - **Performance Invariant:** Vehicle history retrieval throughput is reported strictly as `Vehicle history performance: NOT BENCHMARKED` until formal database load tests are conducted.
 
+---
+
+## 10. Cross-Camera Correlation Data Fidelity & Provenance
+
+- **`is_demo` Journey Provenance:** If any underlying observation in the journey sequence is marked `is_demo = True`, `VehicleJourneyResponse.is_demo` is set to `True`. Demo-derived journeys are never presented as live police intelligence.
+- **Zero Route Fabrication:** A correlated sequence of camera sightings is strictly represented as verified camera waypoints with GeoJSON property `route_inference: "NONE_CAMERA_POINTS_ONLY"`. Road network routing, turn-by-turn navigation, and intermediate interpolation are strictly prohibited.
+- **Zero Coordinate Fabrication:** Unmapped camera waypoints serialize with `latitude: null, longitude: null` and transitions involving them report `distance_km: null` and `plausibility_status: "PLAUSIBILITY_UNKNOWN"`. Coordinates are never fabricated as `0,0`.
+- **Empty History Fidelity:** If a plate has never been detected, the journey endpoint returns `correlation_status: "INSUFFICIENT_DATA"` with 0 waypoints and 0 transitions.
+- **Performance Invariant:** Multi-camera graph traversal and trajectory correlation throughput are explicitly reported as `Correlation performance: NOT BENCHMARKED` until formal benchmarks are conducted.
+
+
 

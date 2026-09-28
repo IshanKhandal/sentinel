@@ -252,10 +252,92 @@ All non-2xx responses follow this uniform structure:
 - **No Route Inference Guarantee:** Returns observations only. Does NOT infer travel paths, speed, estimated travel time, or next-camera transitions.
 - **Validation:** `start_time` must be prior to `end_time` (returns 400 Bad Request otherwise).
 
-### `GET /api/v1/vehicles/{plate_number}/journey`
-- **Purpose:** Cross-camera sequential trajectory reconstruction and velocity estimation.
-- **Status:** `NOT IMPLEMENTED — RESERVED FOR STAGE 12` (Returns HTTP 501 Not Implemented).
-- **Boundary Invariant:** Trajectory graph correlation, route inference, and travel speed calculation are deferred strictly to Stage 12.
+### `GET /api/v1/vehicles/{plate_number}/journey` (Alias: `GET /api/v1/vehicles/{plate_number}/correlation`)
+- **Purpose:** Cross-camera sequential trajectory reconstruction, inter-camera temporal intervals, Haversine geographic distance, and physical transition plausibility analysis.
+- **Status:** `IMPLEMENTED (Stage 12 Cross-Camera Correlation)`
+- **Query Params:**
+  - `start_time`: ISO 8601 UTC timestamp filter.
+  - `end_time`: ISO 8601 UTC timestamp filter.
+  - `max_speed_kmh`: Float (default: `180.0`). Transition velocity threshold above which inter-camera travel is flagged as `ANOMALY`. Must be > 0.
+- **Response (200 OK):** `VehicleJourneyResponse`
+  ```json
+  {
+    "plate_number": "GJ01AB1234",
+    "correlation_status": "CORRELATED",
+    "total_observations": 5,
+    "total_waypoints": 3,
+    "total_camera_transitions": 2,
+    "total_distance_km": 14.25,
+    "total_elapsed_seconds": 1200.0,
+    "is_demo": false,
+    "has_speed_anomaly": false,
+    "max_speed_threshold_kmh": 180.0,
+    "observations": [ ... ],
+    "waypoints": [
+      {
+        "sequence": 1,
+        "camera_id": "uuid",
+        "camera_name": "Junction 1",
+        "location_id": "uuid",
+        "location_name": "Paldi",
+        "latitude": 23.0135,
+        "longitude": 72.5624,
+        "city": "Ahmedabad",
+        "state": "Gujarat",
+        "first_detected_at": "2026-09-29T08:00:00Z",
+        "last_detected_at": "2026-09-29T08:00:15Z",
+        "observation_count": 2,
+        "detection_ids": ["uuid", "uuid"],
+        "is_demo": false
+      }
+    ],
+    "transitions": [
+      {
+        "from_camera_id": "uuid",
+        "from_camera_name": "Junction 1",
+        "from_detected_at": "2026-09-29T08:00:15Z",
+        "from_detection_id": "uuid",
+        "to_camera_id": "uuid",
+        "to_camera_name": "Junction 2",
+        "to_detected_at": "2026-09-29T08:05:00Z",
+        "to_detection_id": "uuid",
+        "elapsed_seconds": 285.0,
+        "distance_km": 2.15,
+        "implied_speed_kmh": 27.16,
+        "plausibility_status": "PLAUSIBLE",
+        "anomaly_reason": null
+      }
+    ],
+    "unmapped_waypoints": [],
+    "geojson_route": {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[72.5624, 23.0135], [72.5714, 23.0232]]
+      },
+      "properties": {
+        "plate_number": "GJ01AB1234",
+        "waypoints_count": 2,
+        "observation_type": "INTER_CAMERA_SEQUENCE",
+        "route_inference": "NONE_CAMERA_POINTS_ONLY"
+      }
+    }
+  }
+  ```
+- **Correlation Status Values:**
+  - `CORRELATED`: >= 2 waypoints, all mapped, no speed anomalies.
+  - `PARTIALLY_CORRELATED`: >= 2 waypoints, but contains unmapped cameras or flagged transition anomalies.
+  - `NO_TRANSITION`: All observations occurred at a single camera.
+  - `INSUFFICIENT_DATA`: 0 observations found for searched plate.
+- **Physical Plausibility States:**
+  - `PLAUSIBLE`: `implied_speed_kmh <= max_speed_threshold_kmh`.
+  - `ANOMALY`: `implied_speed_kmh > max_speed_threshold_kmh` OR simultaneous detections at distinct camera locations.
+  - `PLAUSIBILITY_UNKNOWN`: Distance or time could not be reliably calculated due to unmapped camera coordinates or missing timestamps.
+- **Strict Invariants:**
+  - `Observation != Route`: The GeoJSON LineString connects verified camera points only with explicit property `"route_inference": "NONE_CAMERA_POINTS_ONLY"`. Road network routing, turn-by-turn navigation, and intermediate interpolation are strictly prohibited.
+  - `Unmapped Cameras`: Distances involving unmapped cameras are reported as `null` (never `0.0` or `0,0`).
+  - `Consecutive Observations`: Multiple consecutive observations at the same camera are aggregated into a single `JourneyWaypoint`; camera transitions are generated only when the physical camera changes.
+
 
 ---
 

@@ -107,8 +107,8 @@ The schema is organized into 6 logical domains designed to avoid redundancy whil
 - **Columns:**
   - `id`: `UUID` (Primary Key)
   - `name`: `VARCHAR(150)` (Not Null)
-  - `latitude`: `NUMERIC(10, 7)` (Not Null)
-  - `longitude`: `NUMERIC(10, 7)` (Not Null)
+  - `latitude`: `NUMERIC(10, 7)` (Nullable; `None` if camera site is unmapped / coordinates pending GPS verification; never fabricated as `0.0`)
+  - `longitude`: `NUMERIC(10, 7)` (Nullable; `None` if camera site is unmapped / coordinates pending GPS verification; never fabricated as `0.0`)
   - `address`: `TEXT` (Nullable)
   - `city`: `VARCHAR(100)` (Not Null, e.g., `Ahmedabad`)
   - `state`: `VARCHAR(100)` (Default: `Gujarat`)
@@ -350,3 +350,12 @@ The schema is organized into 6 logical domains designed to avoid redundancy whil
   - `idx_audit_logs_action` ON (`action`, `timestamp` DESC)
   - `idx_audit_logs_time` ON (`timestamp` DESC)
 - **Constraint:** Read-only table. Application database user is granted `SELECT` and `INSERT` permissions only; `UPDATE` and `DELETE` privileges are strictly revoked at the database role level.
+
+---
+
+### Migration History
+
+1. `c1a5639ce6ba` — Initial schema creation (all core tables, foreign keys, and indexes).
+2. `f1a891746c72` — Add `raw_text` and `detection_metadata` columns to `detections` table (Stage 8 Event Persistence).
+3. `a7c8e9d01234` — Alter `locations.latitude` and `locations.longitude` to `nullable=True` to support unmapped camera sites without coordinate fabrication (Stage 12 Cross-Camera Correlation).
+

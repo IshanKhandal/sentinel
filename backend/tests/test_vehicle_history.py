@@ -706,9 +706,15 @@ def test_api_get_vehicle_history_invalid_time_range_returns_400():
     assert "start_time must be prior to end_time" in response.json()["detail"]
 
 
-def test_api_get_vehicle_journey_reserved_for_stage_12_returns_501():
-    """Verify GET /api/v1/vehicles/{plate_number}/journey returns 501 Not Implemented (Stage 12 Guard)."""
+def test_api_get_vehicle_journey_stage_12_endpoint():
+    """Verify GET /api/v1/vehicles/{plate_number}/journey returns 200 OK with Stage 12 correlation schema."""
     client = TestClient(app)
     response = client.get("/api/v1/vehicles/GJ01XY1234/journey")
-    assert response.status_code == 501
-    assert "Stage 12" in response.json()["detail"]
+    assert response.status_code == 200
+    data = response.json()
+    assert data["plate_number"] == "GJ01XY1234"
+    assert data["correlation_status"] == "INSUFFICIENT_DATA"
+    assert data["total_observations"] == 0
+    assert data["total_camera_transitions"] == 0
+    assert data["waypoints"] == []
+    assert data["transitions"] == []

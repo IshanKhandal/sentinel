@@ -1,22 +1,23 @@
-# Project Assumptions Log
+# Project Assumptions Register
 
-> **Protocol Note:** In accordance with Project Rule 27, every assumption must be explicitly recorded here. Undocumented assumptions are strictly prohibited from entering the system.
+> **Protocol Note:** In accordance with Project Rule 27 and Phase 0 Audit Directive 11, every assumption must be explicitly logged. Unrecorded assumptions are strictly forbidden. In all cases, `UNKNOWN` is preferred over `ASSUMED` unless strictly necessary for an environmental baseline.
 
-## Active Assumptions
+## Active Assumptions Register
 
-| ID | Date Recorded | Category | Assumption Description | Justification / Origin | Risk Level | Status |
+| ID | Date Recorded | Category | Stated Assumption | Empirical Basis / Justification | Risk Level | Status |
 |---|---|---|---|---|---|---|
-| ASM-001 | 2026-09-28 | Environment | The development environment is Windows with PowerShell, Node.js/Python tooling available on developer machine as standard CLI environment. | Local machine environment observed from system metadata. | Low | PENDING VERIFICATION |
+| ASM-001 | 2026-09-28 | Operating Environment | Host machine is 64-bit Windows with PowerShell shell, Node.js (`v24.16.0`), Python (`3.14.3`), and Docker CLI (`29.5.3`) available. | Confirmed via direct terminal inspection (`node -v`, `python --version`, `docker --version`). | Low | VERIFIED |
+| ASM-002 | 2026-09-28 | Media Processing Tools | `ffmpeg` is not currently in system PATH and must either be installed locally or run via a containerized service. | Confirmed via `ffmpeg -version` failure (`CommandNotFoundException`). | Medium | VERIFIED |
+| ASM-003 | 2026-09-28 | Database Availability | PostgreSQL and Redis CLI tools are not installed in system PATH; containerized Docker services or embedded SQLite/in-memory queues will be required if running locally. | Confirmed via `Get-Command psql, redis-cli` check. Docker daemon is installed but currently stopped. | Medium | PENDING DAEMON STARTUP |
+| ASM-004 | 2026-09-28 | Codebase Heritage | The repository is a greenfield initialization with no pre-existing legacy code, scripts, or assets inherited from an earlier project. | Confirmed by initial git history and recursive workspace listing showing only audit documentation files. | Low | VERIFIED |
 
 ---
 
-## Resolved / Rejected Assumptions
+## Prohibited Hallucinations (Explicitly Kept as UNKNOWN, NOT Assumed)
 
-*(None yet)*
-
----
-
-## Log Rules
-1. Whenever a design or implementation decision cannot be verified directly from official challenge documents, specifications, or existing verified resources, an entry MUST be added here before proceeding.
-2. If an assumption is later verified by authoritative documentation, its status will be updated to `VERIFIED` and linked to the evidence.
-3. If an assumption is refuted, it will be marked `REJECTED` and the dependent code must be refactored or removed.
+The following items are deliberately **NOT** assumed:
+1. **Camera Feeds & RTSP URLs:** NOT ASSUMED. Marked `UNKNOWN`.
+2. **Detection Targets & Classes:** NOT ASSUMED. Marked `UNKNOWN`.
+3. **Police Database Schemas & Endpoints:** NOT ASSUMED. Marked `UNKNOWN`.
+4. **Geographic Coordinates & Map Projections:** NOT ASSUMED. Marked `UNKNOWN`.
+5. **Accuracy / Inference Benchmarks:** NOT ASSUMED. Marked `UNKNOWN`.

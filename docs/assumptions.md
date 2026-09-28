@@ -1,6 +1,6 @@
 # Project Assumptions Register
 
-> **Protocol Note:** In accordance with Project Rule 27 and Phase 0/1/2 Directives, every assumption must be explicitly logged. Unrecorded assumptions are strictly forbidden. In all cases, `UNKNOWN` is preferred over `ASSUMED` unless strictly necessary for an environmental baseline.
+> **Protocol Note:** In accordance with Project Rule 27 and Phase 0/1/2/3 Directives, every assumption must be explicitly logged. Unrecorded assumptions are strictly forbidden. In all cases, `UNKNOWN` is preferred over `ASSUMED` unless strictly necessary for an environmental baseline.
 
 ## Active Assumptions Register
 
@@ -12,14 +12,17 @@
 | ASM-004 | 2026-09-28 | Codebase Heritage | The repository is a greenfield initialization with no pre-existing legacy code, scripts, or assets inherited from an earlier project. | Confirmed by initial git history and recursive workspace listing showing only audit documentation files. | Low | VERIFIED |
 | ASM-005 | 2026-09-28 | Audit Log Privilege Enforcement | SQLite does not support SQL user-level GRANT/REVOKE privilege enforcement (e.g. revoking UPDATE/DELETE on `audit_logs`). Append-only security is enforced by application logic in SQLite and marked pending PostgreSQL for database-level role enforcement. | Documented architecture limitation of SQLite database engine. | Low | VERIFIED (LIMITATION RECORDED) |
 | ASM-006 | 2026-09-28 | Cross-Dialect Primary Key Typing | Using `BigInteger().with_variant(Integer, "sqlite")` enables SQLite to treat `id` as an autoincrementing ROWID alias while producing standard 64-bit BIGINT / BIGSERIAL on PostgreSQL. | Confirmed by SQLAlchemy 2.0 dialect specification and verified by automated CRUD test suite. | Low | VERIFIED |
+| ASM-007 | 2026-09-28 | Official CCTV Integration Invariants | All cameras in the official Sentinel environment publish via RTSP (:8554), WebRTC/WHEP (:8889), and HLS; catalogue discovery via `GET /api/ingest` is the authoritative source for stream parameters. | Confirmed by official Sentinel technical contract provided in Phase 3 instructions. | Low | VERIFIED SPECIFICATION |
+| ASM-008 | 2026-09-28 | Stream Host Provisioning | The actual stream host IP/domain is not provided in repository files or environment variables; the application must keep `SENTINEL_STREAM_HOST` unconfigured until supplied by organizers. | Confirmed by recursive file and environment search returning zero host matches. | Medium | VERIFIED (MARKED BLOCKED) |
 
 ---
 
 ## Prohibited Hallucinations (Explicitly Kept as UNKNOWN, NOT Assumed)
 
 The following items are deliberately **NOT** assumed:
-1. **Camera Feeds & RTSP URLs:** NOT ASSUMED. Marked `UNKNOWN`.
-2. **Detection Targets & Classes:** NOT ASSUMED. Marked `UNKNOWN`.
-3. **Police Database Schemas & Endpoints:** NOT ASSUMED. Marked `UNKNOWN`.
-4. **Geographic Coordinates & Map Projections:** NOT ASSUMED. Marked `UNKNOWN`.
-5. **Accuracy / Inference Benchmarks:** NOT ASSUMED. Marked `UNKNOWN`.
+1. **Actual Sentinel Stream Host (`<host>`):** NOT ASSUMED. Marked `UNKNOWN / BLOCKED`. Never replaced with `localhost` or fake IPs.
+2. **Camera Feeds & Real RTSP URLs:** NOT ASSUMED. Marked `UNKNOWN / BLOCKED`.
+3. **Exact Live Catalogue Response Fields:** NOT ASSUMED. Parsed with flexible Pydantic `extra="allow"` model; marked `UNVERIFIED` until verified host response is captured.
+4. **Government Police Database Schemas & Endpoints:** NOT ASSUMED. Marked `UNKNOWN`.
+5. **Geographic Coordinates & Real Camera Locations:** NOT ASSUMED. Marked `UNKNOWN`.
+6. **Accuracy / Inference Benchmarks:** NOT ASSUMED. Marked `UNKNOWN`.

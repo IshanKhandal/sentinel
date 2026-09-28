@@ -146,31 +146,36 @@ class WatchlistService:
         cls,
         db: Session,
         data: WatchlistCreate,
+        user_id: Optional[uuid.UUID] = None,
         ip_address: str = "127.0.0.1"
     ) -> Watchlist:
         """Create a new watchlist hotlist container."""
-        # Check uniqueness of name
-        existing = db.query(Watchlist).filter(Watchlist.name == data.name).first()
-        if existing:
-            raise WatchlistDuplicateError(f"Watchlist with name '{data.name}' already exists.")
+        clean_name = data.name.strip()
+        if not clean_name:
+            raise WatchlistValidationError("Watchlist name cannot be empty.")
 
-        # Resolve enrolling user
-        user_id = data.created_by_user_id
-        if not user_id:
+        # Check uniqueness of name
+        existing = db.query(Watchlist).filter(Watchlist.name == clean_name).first()
+        if existing:
+            raise WatchlistDuplicateError(f"Watchlist with name '{clean_name}' already exists.")
+
+        # Resolve enrolling user (explicit user_id takes precedence, fallback to payload or system user)
+        resolved_user_id = user_id or data.created_by_user_id
+        if not resolved_user_id:
             sys_user = get_or_create_system_user(db)
-            user_id = sys_user.id
+            resolved_user_id = sys_user.id
         else:
-            user_exists = db.query(User).filter_by(id=user_id).first()
+            user_exists = db.query(User).filter_by(id=resolved_user_id).first()
             if not user_exists:
-                raise WatchlistValidationError(f"User with ID '{user_id}' does not exist.")
+                raise WatchlistValidationError(f"User with ID '{resolved_user_id}' does not exist.")
 
         wl = Watchlist(
             id=uuid.uuid4(),
-            name=data.name.strip(),
+            name=clean_name,
             category=data.category.value if hasattr(data.category, "value") else str(data.category),
             severity=data.severity.value if hasattr(data.severity, "value") else str(data.severity),
             is_active=data.is_active,
-            created_by_user_id=user_id,
+            created_by_user_id=resolved_user_id,
         )
 
         try:
@@ -179,11 +184,11 @@ class WatchlistService:
             db.refresh(wl)
         except IntegrityError as exc:
             db.rollback()
-            raise WatchlistDuplicateError(f"Watchlist with name '{data.name}' already exists.") from exc
+            raise WatchlistDuplicateError(f"Watchlist with name '{clean_name}' already exists.") from exc
 
         _record_audit_log(
             db=db,
-            user_id=user_id,
+            user_id=resolved_user_id,
             action="WATCHLIST_CREATE",
             resource_type="WATCHLIST",
             resource_id=str(wl.id),
@@ -233,13 +238,16 @@ class WatchlistService:
             raise WatchlistNotFoundError(f"Watchlist '{watchlist_id}' not found.")
 
         if data.name is not None:
+            clean_name = data.name.strip()
+            if not clean_name:
+                raise WatchlistValidationError("Watchlist name cannot be empty.")
             existing = db.query(Watchlist).filter(
-                Watchlist.name == data.name.strip(),
+                Watchlist.name == clean_name,
                 Watchlist.id != watchlist_id
             ).first()
             if existing:
-                raise WatchlistDuplicateError(f"Watchlist with name '{data.name}' already exists.")
-            wl.name = data.name.strip()
+                raise WatchlistDuplicateError(f"Watchlist with name '{clean_name}' already exists.")
+            wl.name = clean_name
 
         if data.category is not None:
             wl.category = data.category.value if hasattr(data.category, "value") else str(data.category)
@@ -250,8 +258,14 @@ class WatchlistService:
         if data.is_active is not None:
             wl.is_active = data.is_active
 
-        db.commit()
-        db.refresh(wl)
+        try:
+            db.commit()
+            db.refresh(wl)
+        except IntegrityError as exc:
+            db.rollback()
+            raise WatchlistDuplicateError(
+                f"Watchlist with name '{wl.name}' already exists."
+            ) from exc
 
         _record_audit_log(
             db=db,
@@ -382,7 +396,8 @@ class WatchlistService:
             query = query.filter(WatchlistEntry.is_active == is_active)
         if plate_search:
             clean_search = clean_plate_text(plate_search)
-            query = query.filter(WatchlistEntry.plate_number.like(f"%{clean_search}%"))
+            if clean_search:
+                query = query.filter(WatchlistEntry.plate_number.like(f"%{clean_search}%"))
 
         total = query.count()
         items = query.order_by(WatchlistEntry.created_at.desc()).offset(skip).limit(limit).all()
@@ -431,8 +446,14 @@ class WatchlistService:
         if data.is_active is not None:
             entry.is_active = data.is_active
 
-        db.commit()
-        db.refresh(entry)
+        try:
+            db.commit()
+            db.refresh(entry)
+        except IntegrityError as exc:
+            db.rollback()
+            raise WatchlistEntryDuplicateError(
+                f"Plate '{entry.plate_number}' is already enrolled in this watchlist."
+            ) from exc
 
         _record_audit_log(
             db=db,

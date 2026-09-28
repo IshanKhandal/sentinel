@@ -10,7 +10,7 @@ Protocol Standards:
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
@@ -84,11 +84,17 @@ def list_watchlists(
 @router.post("", response_model=WatchlistRead, status_code=status.HTTP_201_CREATED)
 def create_watchlist(
     payload: WatchlistCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ) -> WatchlistRead:
     """Create a new police watchlist hotlist category."""
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     try:
-        wl = WatchlistService.create_watchlist(db=db, data=payload)
+        wl = WatchlistService.create_watchlist(
+            db=db,
+            data=payload,
+            ip_address=client_ip
+        )
         return WatchlistRead(
             id=wl.id,
             name=wl.name,
@@ -141,11 +147,18 @@ def get_watchlist(
 def update_watchlist(
     watchlist_id: uuid.UUID,
     payload: WatchlistUpdate,
+    request: Request,
     db: Session = Depends(get_db)
 ) -> WatchlistRead:
     """Update metadata or toggle active state of a police watchlist."""
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     try:
-        wl = WatchlistService.update_watchlist(db=db, watchlist_id=watchlist_id, data=payload)
+        wl = WatchlistService.update_watchlist(
+            db=db,
+            watchlist_id=watchlist_id,
+            data=payload,
+            ip_address=client_ip
+        )
         entries_count = len([e for e in wl.entries if e.is_active]) if wl.entries else 0
         return WatchlistRead(
             id=wl.id,
@@ -167,16 +180,23 @@ def update_watchlist(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc)
         ) from exc
+    except WatchlistValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        ) from exc
 
 
 @router.delete("/{watchlist_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_watchlist(
     watchlist_id: uuid.UUID,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Delete a police watchlist and all its enrolled vehicle registration entries."""
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     try:
-        WatchlistService.delete_watchlist(db=db, watchlist_id=watchlist_id)
+        WatchlistService.delete_watchlist(db=db, watchlist_id=watchlist_id, ip_address=client_ip)
     except WatchlistNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -238,11 +258,18 @@ def list_watchlist_entries(
 def enroll_plate(
     watchlist_id: uuid.UUID,
     payload: WatchlistEntryCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ) -> WatchlistEntryRead:
     """Enroll a target license plate onto a police watchlist (docs/api-contract.md Section 8)."""
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     try:
-        entry = WatchlistService.enroll_plate(db=db, watchlist_id=watchlist_id, data=payload)
+        entry = WatchlistService.enroll_plate(
+            db=db,
+            watchlist_id=watchlist_id,
+            data=payload,
+            ip_address=client_ip
+        )
         wl = entry.watchlist
         return WatchlistEntryRead(
             id=entry.id,
@@ -307,11 +334,18 @@ def get_watchlist_entry(
 def update_watchlist_entry(
     entry_id: uuid.UUID,
     payload: WatchlistEntryUpdate,
+    request: Request,
     db: Session = Depends(get_db)
 ) -> WatchlistEntryRead:
     """Update details or active state of an enrolled watchlist plate."""
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     try:
-        entry = WatchlistService.update_entry(db=db, entry_id=entry_id, data=payload)
+        entry = WatchlistService.update_entry(
+            db=db,
+            entry_id=entry_id,
+            data=payload,
+            ip_address=client_ip
+        )
         wl = entry.watchlist
         return WatchlistEntryRead(
             id=entry.id,
@@ -346,11 +380,13 @@ def update_watchlist_entry(
 @router.delete("/entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_watchlist_entry(
     entry_id: uuid.UUID,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     """Delete an enrolled plate entry from its watchlist."""
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     try:
-        WatchlistService.delete_entry(db=db, entry_id=entry_id)
+        WatchlistService.delete_entry(db=db, entry_id=entry_id, ip_address=client_ip)
     except WatchlistNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -760,3 +760,154 @@ def test_api_watchlist_endpoints(db_session: Session, base_test_data):
 
     finally:
         app.dependency_overrides.clear()
+
+
+def test_watchlist_name_whitespace_normalization_and_duplicate_prevention(db_session: Session, base_test_data):
+    """Verify watchlist name is stripped and duplicate check detects whitespace-padded duplicates."""
+    user = base_test_data["user"]
+    
+    # 1. Create with padded whitespace
+    dto1 = WatchlistCreate(
+        name="  Organized Smuggling Syndicate  ",
+        category=WatchlistCategory.WANTED,
+        severity=WatchlistSeverity.CRITICAL,
+        is_active=True,
+    )
+    wl1 = WatchlistService.create_watchlist(db=db_session, data=dto1, user_id=user.id)
+    assert wl1.name == "Organized Smuggling Syndicate"
+
+    # 2. Attempt to create with different padding -> duplicate error
+    dto2 = WatchlistCreate(
+        name="Organized Smuggling Syndicate   ",
+        category=WatchlistCategory.WANTED,
+        severity=WatchlistSeverity.HIGH,
+        is_active=True,
+    )
+    with pytest.raises(WatchlistDuplicateError):
+        WatchlistService.create_watchlist(db=db_session, data=dto2)
+
+    # 3. Empty or all-whitespace name raises validation error
+    dto_empty = WatchlistCreate(
+        name="   ",
+        category=WatchlistCategory.WANTED,
+        severity=WatchlistSeverity.LOW,
+        is_active=True,
+    )
+    with pytest.raises(WatchlistValidationError):
+        WatchlistService.create_watchlist(db=db_session, data=dto_empty)
+
+
+def test_watchlist_entries_plate_search_empty_cleaned_search_behavior(db_session: Session, base_test_data):
+    """Verify plate_search filter only applies when cleaned search is non-empty."""
+    user = base_test_data["user"]
+    wl = WatchlistService.create_watchlist(
+        db=db_session,
+        data=WatchlistCreate(name="Plate Search Test Hotlist", category=WatchlistCategory.STOLEN, severity=WatchlistSeverity.HIGH),
+        user_id=user.id
+    )
+    
+    # Enroll test entry
+    WatchlistService.enroll_plate(
+        db=db_session,
+        watchlist_id=wl.id,
+        data=WatchlistEntryCreate(plate_number="GJ01AA1111")
+    )
+    WatchlistService.enroll_plate(
+        db=db_session,
+        watchlist_id=wl.id,
+        data=WatchlistEntryCreate(plate_number="GJ01BB2222")
+    )
+
+    # plate_search with only non-alphanumeric chars (cleans to "")
+    # Should NOT filter out records with .like("%%")
+    items, total = WatchlistService.list_entries(
+        db=db_session,
+        watchlist_id=wl.id,
+        plate_search="---   ---"
+    )
+    assert total >= 2
+
+    # Non-empty cleaned search filters accurately
+    items_filtered, total_filtered = WatchlistService.list_entries(
+        db=db_session,
+        watchlist_id=wl.id,
+        plate_search="AA11"
+    )
+    assert total_filtered == 1
+    assert items_filtered[0].plate_number == "GJ01AA1111"
+
+
+def test_update_watchlist_and_entry_integrity_error_rollback(db_session: Session, base_test_data):
+    """Verify IntegrityError on update_watchlist and update_entry rolls back cleanly and raises domain duplicates."""
+    user = base_test_data["user"]
+    
+    wl1 = WatchlistService.create_watchlist(
+        db=db_session,
+        data=WatchlistCreate(name="Hotlist Alpha", category=WatchlistCategory.STOLEN, severity=WatchlistSeverity.HIGH),
+        user_id=user.id
+    )
+    wl2 = WatchlistService.create_watchlist(
+        db=db_session,
+        data=WatchlistCreate(name="Hotlist Beta", category=WatchlistCategory.WANTED, severity=WatchlistSeverity.LOW),
+        user_id=user.id
+    )
+
+    # Attempt to rename wl2 to Hotlist Alpha (duplicate)
+    with pytest.raises(WatchlistDuplicateError):
+        WatchlistService.update_watchlist(
+            db=db_session,
+            watchlist_id=wl2.id,
+            data=WatchlistUpdate(name="Hotlist Alpha")
+        )
+
+    # Verify session is clean and wl2 remains unchanged
+    refreshed_wl2 = WatchlistService.get_watchlist(db=db_session, watchlist_id=wl2.id)
+    assert refreshed_wl2.name == "Hotlist Beta"
+
+    # Enroll entries in wl1
+    e1 = WatchlistService.enroll_plate(db=db_session, watchlist_id=wl1.id, data=WatchlistEntryCreate(plate_number="GJ01CC3333"))
+    e2 = WatchlistService.enroll_plate(db=db_session, watchlist_id=wl1.id, data=WatchlistEntryCreate(plate_number="GJ01DD4444"))
+
+    # Attempt to update e2 to e1's plate (duplicate in same watchlist)
+    with pytest.raises(WatchlistEntryDuplicateError):
+        WatchlistService.update_entry(
+            db=db_session,
+            entry_id=e2.id,
+            data=WatchlistEntryUpdate(plate_number="GJ01CC3333")
+        )
+
+    # Verify session is clean and e2 remains unchanged
+    refreshed_e2 = WatchlistService.get_entry(db=db_session, entry_id=e2.id)
+    assert refreshed_e2.plate_number == "GJ01DD4444"
+
+
+def test_watchlist_create_user_and_ip_audit_provenance(db_session: Session, base_test_data):
+    """Verify create_watchlist respects explicit user_id and records request IP address in audit log."""
+    from backend.app.models.audit import AuditLog
+    user = base_test_data["user"]
+    custom_ip = "192.168.10.42"
+
+    dto = WatchlistCreate(
+        name="Audit Provenance Hotlist",
+        category=WatchlistCategory.STOLEN,
+        severity=WatchlistSeverity.HIGH,
+        is_active=True,
+    )
+    wl = WatchlistService.create_watchlist(
+        db=db_session,
+        data=dto,
+        user_id=user.id,
+        ip_address=custom_ip
+    )
+    assert wl.created_by_user_id == user.id
+
+    # Verify audit log record
+    log = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.resource_id == str(wl.id), AuditLog.action == "WATCHLIST_CREATE")
+        .first()
+    )
+    assert log is not None
+    assert log.user_id == user.id
+    assert log.ip_address == custom_ip
+

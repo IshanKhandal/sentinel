@@ -67,9 +67,11 @@ class Settings(BaseSettings):
     WS_MAX_MESSAGE_BYTES: int = 65536
     WS_MAX_CONNECTIONS: int = 1000
 
-    # Security
+    # Security (Stage 15 Architecture)
     SECRET_KEY: str = "development-only-insecure-secret-key-do-not-use-in-production-min32c"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
+    JWT_ALGORITHM: str = "HS256"
+    BCRYPT_ROUNDS: int = 12
     
     # Logging
     LOG_LEVEL: str = "INFO"

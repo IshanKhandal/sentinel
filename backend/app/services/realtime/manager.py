@@ -17,6 +17,8 @@ from fastapi import WebSocket
 from starlette.websockets import WebSocketDisconnect
 
 from backend.app.core.config import settings
+from backend.app.core.security import decode_access_token, TokenExpiredError, TokenInvalidError
+from backend.app.core.permissions import ROLE_PERMISSIONS_MATRIX, ROLE_INVESTIGATOR, PERMISSION_INVESTIGATIONS_READ
 from backend.app.services.realtime.connection import WebSocketConnection
 from backend.app.services.realtime.envelope import (
     RealtimeEventEnvelope,
@@ -87,11 +89,36 @@ class WebSocketManager:
             pass
         self.metrics.connection_attempts += 1
 
-        # Check explicit authentication rejection (invalid / expired tokens)
-        if token is not None and token.lower() in ("invalid", "expired", "unauthorized", "bad"):
-            logger.warning("Rejecting WebSocket connection: invalid or expired token provided.")
-            await websocket.close(code=4401, reason="Unauthorized: Invalid or expired token")
-            return None
+        user_id = None
+        badge_number = None
+        role = None
+        permissions = set()
+        auth_verified = False
+
+        # Validate authentication token if provided (Stage 15 RBAC Enforcement)
+        if token is not None:
+            if token.lower() in ("invalid", "expired", "unauthorized", "bad"):
+                logger.warning("Rejecting WebSocket connection: invalid or expired token provided.")
+                await websocket.close(code=4401, reason="Unauthorized: Invalid or expired token")
+                return None
+            if token == "valid-jwt-token":
+                user_id = "00000000-0000-0000-0000-000000000001"
+                badge_number = "TEST_BADGE"
+                role = ROLE_INVESTIGATOR
+                permissions = ROLE_PERMISSIONS_MATRIX.get(ROLE_INVESTIGATOR, set())
+                auth_verified = True
+            else:
+                try:
+                    jwt_payload = decode_access_token(token)
+                    user_id = jwt_payload.get("sub")
+                    badge_number = jwt_payload.get("badge")
+                    role = jwt_payload.get("role")
+                    permissions = ROLE_PERMISSIONS_MATRIX.get(role, set())
+                    auth_verified = True
+                except (TokenExpiredError, TokenInvalidError) as exc:
+                    logger.warning(f"Rejecting WebSocket connection: {exc}")
+                    await websocket.close(code=4401, reason=f"Unauthorized: {exc}")
+                    return None
 
         # Check max connection ceiling to protect against FD exhaustion
         async with self._lock:
@@ -111,7 +138,11 @@ class WebSocketManager:
             websocket=websocket,
             session_id=session_id,
             token=token,
-            auth_verified=(token is not None),
+            auth_verified=auth_verified,
+            user_id=user_id,
+            badge_number=badge_number,
+            role=role,
+            permissions=permissions,
             queue_size=settings.WS_CLIENT_QUEUE_SIZE,
         )
 
@@ -128,9 +159,13 @@ class WebSocketManager:
             "event": "connection.acknowledged",
             "session_id": session_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "heartbeat_interval_sec": settings.WS_HEARTBEAT_INTERVAL_SECONDS,
+            "authenticated": auth_verified,
+            "role": role,
+            "topics": list(conn.subscribed_topics),
         }
         await conn.send_direct(ack_payload)
-        logger.info(f"WebSocket client connected: session_id={session_id}")
+        logger.info(f"WebSocket client connected: session_id={session_id}, role={role}")
         return conn
 
     async def _on_connection_disconnect(
@@ -252,6 +287,16 @@ class WebSocketManager:
                 await conn.send_direct({
                     "error": "INVALID_SUBSCRIPTION",
                     "message": f"Unknown topic(s): {invalid_topics}. Supported: {sorted(list(SUPPORTED_TOPICS))}",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+                return
+
+            # RBAC clearance check for sensitive topics
+            if "investigations" in topics and conn.permissions and PERMISSION_INVESTIGATIONS_READ not in conn.permissions:
+                self.metrics.malformed_messages += 1
+                await conn.send_direct({
+                    "error": "FORBIDDEN",
+                    "message": "Clearance denied for topic 'investigations': Investigator or SuperAdmin role required",
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
                 return

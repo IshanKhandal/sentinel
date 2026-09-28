@@ -33,12 +33,20 @@ class WebSocketConnection:
         session_id: str,
         token: Optional[str] = None,
         auth_verified: bool = False,
+        user_id: Optional[str] = None,
+        badge_number: Optional[str] = None,
+        role: Optional[str] = None,
+        permissions: Optional[Set[str]] = None,
         queue_size: Optional[int] = None,
     ) -> None:
         self.websocket = websocket
         self.session_id = session_id
         self.token = token
         self.auth_verified = auth_verified
+        self.user_id = user_id
+        self.badge_number = badge_number
+        self.role = role
+        self.permissions: Set[str] = permissions or set()
         self.connected_at = datetime.now(timezone.utc).isoformat()
         self.last_heartbeat: float = time.monotonic()
         
@@ -63,7 +71,15 @@ class WebSocketConnection:
         self.last_heartbeat = time.monotonic()
 
     def matches_topic(self, event_type: str) -> bool:
-        """Check whether this client's subscription filters match the given event type."""
+        """Check whether this client's subscription filters match the given event type.
+        
+        Enforces least privilege: sensitive investigation events require investigations:read clearance.
+        """
+        # RBAC Check: investigation events require permission
+        if event_type.startswith("investigation.") and self.permissions:
+            if "investigations:read" not in self.permissions and self.role != "SuperAdmin":
+                return False
+
         if "all" in self.subscribed_topics or "*" in self.subscribed_topics:
             return True
         if event_type in self.subscribed_topics:

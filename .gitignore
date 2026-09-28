@@ -45,3 +45,9 @@ yarn-error.log*
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Agent & workspace state
+.agent/
+.agents/
+.gemini/
+.gsd/

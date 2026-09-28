@@ -12,6 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
+from backend.app.core.auth import require_permission
+from backend.app.core.permissions import PERMISSION_CAMERAS_READ, PERMISSION_STREAMS_MANAGE
+from backend.app.models.access import User
 from backend.app.models.surveillance import Camera
 from backend.app.schemas.streaming import StreamSessionResponse, StreamActionResponse
 from backend.app.services.streaming.manager import stream_manager
@@ -23,13 +26,19 @@ router = APIRouter(prefix="/streams", tags=["streams"])
 
 
 @router.get("", response_model=List[StreamSessionResponse])
-def list_active_streams() -> List[StreamSessionResponse]:
+def list_active_streams(
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_READ)),
+) -> List[StreamSessionResponse]:
     """List all currently active camera stream sessions and real-time telemetry."""
     return stream_manager.list_active_streams()
 
 
 @router.get("/{camera_id}/status", response_model=StreamSessionResponse)
-def get_stream_status(camera_id: str, db: Session = Depends(get_db)) -> StreamSessionResponse:
+def get_stream_status(
+    camera_id: str,
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_READ)),
+    db: Session = Depends(get_db)
+) -> StreamSessionResponse:
     """Fetch current telemetry and health status for a camera stream."""
     session = stream_manager.get_stream_session(camera_id)
     if session:
@@ -73,7 +82,11 @@ def get_stream_status(camera_id: str, db: Session = Depends(get_db)) -> StreamSe
 
 
 @router.post("/{camera_id}/start", response_model=StreamActionResponse)
-def start_camera_stream(camera_id: str, db: Session = Depends(get_db)) -> StreamActionResponse:
+def start_camera_stream(
+    camera_id: str,
+    current_user: User = Depends(require_permission(PERMISSION_STREAMS_MANAGE)),
+    db: Session = Depends(get_db)
+) -> StreamActionResponse:
     """Initiate video stream ingestion worker for a registered camera."""
     try:
         cam_uuid = uuid.UUID(camera_id)
@@ -123,7 +136,10 @@ def start_camera_stream(camera_id: str, db: Session = Depends(get_db)) -> Stream
 
 
 @router.post("/{camera_id}/stop", response_model=StreamActionResponse)
-def stop_camera_stream(camera_id: str) -> StreamActionResponse:
+def stop_camera_stream(
+    camera_id: str,
+    current_user: User = Depends(require_permission(PERMISSION_STREAMS_MANAGE)),
+) -> StreamActionResponse:
     """Stop an active camera stream worker and release decoder resources."""
     stopped = stream_manager.stop_stream(camera_id)
     if stopped:
@@ -155,7 +171,10 @@ def stop_camera_stream(camera_id: str) -> StreamActionResponse:
 
 
 @router.get("/{camera_id}/snapshot")
-def get_camera_snapshot(camera_id: str) -> Response:
+def get_camera_snapshot(
+    camera_id: str,
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_READ)),
+) -> Response:
     """Retrieve the latest cached JPEG frame snapshot from an active stream."""
     jpeg_bytes = stream_manager.get_snapshot_jpeg(camera_id)
     if not jpeg_bytes:

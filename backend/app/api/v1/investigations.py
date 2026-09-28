@@ -13,6 +13,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
+from backend.app.core.auth import require_permission
+from backend.app.core.permissions import (
+    PERMISSION_INVESTIGATIONS_READ,
+    PERMISSION_INVESTIGATIONS_WRITE,
+    PERMISSION_EVIDENCE_READ,
+    PERMISSION_EVIDENCE_WRITE,
+)
+from backend.app.models.access import User
 from backend.app.schemas.investigation import (
     InvestigationCreate,
     InvestigationUpdate,
@@ -61,9 +69,12 @@ def _extract_client_ip(request: Request) -> str:
 def create_investigation(
     data: InvestigationCreate,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_WRITE)),
     db: Session = Depends(get_db),
 ) -> InvestigationRead:
     """Create a new police case dossier to track vehicles or incident timelines."""
+    if data.lead_detective_id is None and current_user:
+        data.lead_detective_id = current_user.id
     try:
         inv = InvestigationService.create_investigation(
             db=db,
@@ -95,6 +106,7 @@ def list_investigations(
     case_number: Optional[str] = Query(None, description="Filter by case number (partial or exact)"),
     limit: int = Query(50, ge=1, le=100, description="Pagination limit"),
     skip: int = Query(0, ge=0, description="Pagination offset"),
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_READ)),
     db: Session = Depends(get_db),
 ) -> InvestigationListResponse:
     """List investigation cases with filtering and deterministic pagination."""
@@ -122,6 +134,7 @@ def list_investigations(
 )
 def get_investigation(
     investigation_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_READ)),
     db: Session = Depends(get_db),
 ) -> InvestigationRead:
     """Retrieve full investigation case dossier with attached events and evidence counts."""
@@ -147,6 +160,7 @@ def update_investigation(
     investigation_id: uuid.UUID,
     data: InvestigationUpdate,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_WRITE)),
     db: Session = Depends(get_db),
 ) -> InvestigationRead:
     """Update case description, target plate, lead detective, or advance lifecycle status."""
@@ -201,6 +215,7 @@ def attach_event(
     investigation_id: uuid.UUID,
     data: InvestigationEventCreate,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_WRITE)),
     db: Session = Depends(get_db),
 ) -> InvestigationEventRead:
     """Tag and attach a verified detection or operational alert to the investigation timeline."""
@@ -254,6 +269,7 @@ def attach_event(
 )
 def get_investigation_events(
     investigation_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_READ)),
     db: Session = Depends(get_db),
 ) -> List[InvestigationEventRead]:
     """Retrieve all observation and alert events attached to this investigation in chronological sequence."""
@@ -278,6 +294,7 @@ def detach_event(
     investigation_id: uuid.UUID,
     event_id: uuid.UUID,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_WRITE)),
     db: Session = Depends(get_db),
 ) -> None:
     """Remove an attached observation or alert reference from an investigation."""
@@ -305,6 +322,7 @@ def attach_vehicle_history(
     investigation_id: uuid.UUID,
     data: AttachVehicleHistoryRequest,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_WRITE)),
     db: Session = Depends(get_db),
 ) -> List[InvestigationEventRead]:
     """Attach verified detection records for target plate (or explicit detection UUIDs) from Stage 11."""
@@ -348,6 +366,7 @@ def get_investigation_correlation(
     start_time: Optional[datetime] = Query(None, description="Optional window start ISO timestamp"),
     end_time: Optional[datetime] = Query(None, description="Optional window end ISO timestamp"),
     max_speed_kmh: Optional[float] = Query(None, gt=0, description="Plausibility threshold km/h"),
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_READ)),
     db: Session = Depends(get_db),
 ) -> VehicleJourneyResponse:
     """Retrieve Stage 12 cross-camera correlation for target plate without recalculating GIS/spatial graph."""
@@ -390,6 +409,7 @@ def attach_evidence(
     investigation_id: uuid.UUID,
     data: EvidenceCreate,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_EVIDENCE_WRITE)),
     db: Session = Depends(get_db),
 ) -> EvidenceRead:
     """Register verified digital evidence asset metadata with cryptographic SHA-256 hash."""
@@ -420,6 +440,7 @@ def attach_evidence(
 )
 def list_evidence(
     investigation_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PERMISSION_EVIDENCE_READ)),
     db: Session = Depends(get_db),
 ) -> List[EvidenceRead]:
     """List registered forensic evidence items for an investigation."""
@@ -446,6 +467,7 @@ def list_evidence(
 )
 def export_investigation_dossier(
     investigation_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PERMISSION_INVESTIGATIONS_READ)),
     db: Session = Depends(get_db),
 ):
     """Evidence export placeholder adhering strictly to Stage 13 Directive Section 17.

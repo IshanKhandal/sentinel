@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentinel Gujarat // Police Command & Surveillance Platform</title>
+  
+  <!-- Leaflet GIS CSS & JS with offline fallback handling -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Tactical Command Design System -->
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- ====================================================================== -->
+  <!-- Top Command Header Bar                                                  -->
+  <!-- ====================================================================== -->
+  <header class="command-header">
+    <div class="brand-section">
+      <div class="police-crest">GJ</div>
+      <div class="brand-title">
+        <h1>SENTINEL <span>//</span> GUJARAT POLICE</h1>
+        <div class="subtitle">AUTOMATED VIDEO ANALYTICS & REALTIME SURVEILLANCE PLATFORM</div>
+      </div>
+    </div>
+
+    <div class="header-status-cluster">
+      <span id="operation-mode-badge" class="badge-pill mode-demo">
+        <span class="pulse-dot"></span>
+        <span id="operation-mode-text">DEMO MODE</span>
+      </span>
+
+      <span id="ws-status-badge" class="badge-pill ws-disconnected">
+        <span class="pulse-dot"></span>
+        <span id="ws-status-text">WS DISCONNECTED</span>
+      </span>
+
+      <div id="user-badge-container" class="user-profile-badge" style="display: none;">
+        <div>
+          <span id="user-display-name" style="font-weight: 600; color: #fff;">Officer</span>
+          <span id="user-badge-id" class="user-badge-num">SYS001</span>
+        </div>
+        <span id="user-role-chip" class="user-role-chip role-superadmin">SuperAdmin</span>
+        <button id="btn-logout" class="btn-header" onclick="App.auth.logout()">LOGOUT</button>
+      </div>
+
+      <button id="btn-login-open" class="btn-header" onclick="App.ui.showLoginModal()">LOGIN</button>
+    </div>
+  </header>
+
+  <!-- ====================================================================== -->
+  <!-- Main Application Body                                                  -->
+  <!-- ====================================================================== -->
+  <div class="app-body">
+    <!-- Left Navigation Sidebar -->
+    <nav class="sidebar">
+      <div class="nav-section-title">Operational Views</div>
+      <ul class="nav-menu">
+        <li class="nav-item active" data-view="overview">
+          <button onclick="App.nav.switchView('overview')">
+            <span class="nav-label">📊 <span>Overview Dashboard</span></span>
+          </button>
+        </li>
+        <li class="nav-item" data-view="cameras">
+          <button onclick="App.nav.switchView('cameras')">
+            <span class="nav-label">📹 <span>Camera Registry</span></span>
+          </button>
+        </li>
+        <li class="nav-item" data-view="gis">
+          <button onclick="App.nav.switchView('gis')">
+            <span class="nav-label">🗺️ <span>GIS Command Map</span></span>
+          </button>
+        </li>
+        <li class="nav-item" data-view="vehicles">
+          <button onclick="App.nav.switchView('vehicles')">
+            <span class="nav-label">🔍 <span>Vehicle & Journey</span></span>
+          </button>
+        </li>
+        <li class="nav-item" data-view="detections">
+          <button onclick="App.nav.switchView('detections')">
+            <span class="nav-label">🚘 <span>Live Detections</span></span>
+          </button>
+        </li>
+        <li class="nav-item" data-view="watchlists">
+          <button onclick="App.nav.switchView('watchlists')">
+            <span class="nav-label">📋 <span>Hotlists & Watchlists</span></span>
+          </button>
+        </li>
+        <li class="nav-item" data-view="alerts">
+          <button onclick="App.nav.switchView('alerts')">
+            <span class="nav-label">🚨 <span>Alert Center</span></span>
+            <span id="sidebar-alert-counter" class="counter-badge" style="display: none;">0</span>
+          </button>
+        </li>
+        <li class="nav-item" data-view="investigations">
+          <button onclick="App.nav.switchView('investigations')">
+            <span class="nav-label">📁 <span>Investigations</span></span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="nav-section-title" id="admin-nav-title" style="margin-top: 16px; display: none;">Governance</div>
+      <ul class="nav-menu" id="admin-nav-menu" style="display: none;">
+        <li class="nav-item" data-view="audit" id="nav-audit" style="display: none;">
+          <button onclick="App.nav.switchView('audit')">
+            <span class="nav-label">🛡️ <span>Audit Trail</span></span>
+          </button>
+        </li>
+        <li class="nav-item" data-view="users" id="nav-users" style="display: none;">
+          <button onclick="App.nav.switchView('users')">
+            <span class="nav-label">👥 <span>Personnel Access</span></span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div>STATE: <span id="footer-state-indicator" style="color: var(--status-live);">SECURE</span></div>
+        <div>RELEASE: <span id="footer-version">v1.0.0</span></div>
+      </div>
+    </nav>
+
+    <!-- Content Viewport -->
+    <main class="content-viewport">
+      
+      <!-- ================================================================== -->
+      <!-- 1. Overview Dashboard View                                         -->
+      <!-- ================================================================== -->
+      <section id="view-overview" class="view-pane active">
+        <div class="view-header">
+          <div>
+            <h2>OPERATIONAL COMMAND OVERVIEW</h2>
+            <p>Real-time surveillance telemetry, ANPR throughput, and incident alerts across Gujarat State.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn-secondary" onclick="App.dashboard.refresh()">🔄 Refresh Metrics</button>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="card-label">Registered Cameras</div>
+            <div id="stat-cameras-total" class="card-value highlight-cyan">--</div>
+            <div class="card-subtext"><span id="stat-cameras-online" style="color: var(--status-live);">--</span> Online / <span id="stat-cameras-offline" style="color: var(--status-error);">--</span> Offline</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">Total Detections</div>
+            <div id="stat-detections-total" class="card-value">--</div>
+            <div class="card-subtext">Persisted in ledger</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">Active Alerts</div>
+            <div id="stat-alerts-active" class="card-value highlight-red">--</div>
+            <div class="card-subtext">Requires officer triage</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">Active Investigations</div>
+            <div id="stat-investigations-active" class="card-value highlight-amber">--</div>
+            <div class="card-subtext">In-progress case files</div>
+          </div>
+          <div class="metric-card">
+            <div class="card-label">WebSocket Throughput</div>
+            <div id="stat-ws-events" class="card-value">0</div>
+            <div class="card-subtext">Events ingested live</div>
+          </div>
+        </div>
+
+        <div class="dashboard-split">
+          <!-- Recent Alerts Triage -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <span class="panel-title">🚨 Recent Watchlist Alerts</span>
+              <button class="btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="App.nav.switchView('alerts')">View All</button>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+              <table class="tactical-table">
+                <thead>
+                  <tr>
+                    <th>Plate</th>
+                    <th>Severity</th>
+                    <th>Camera</th>
+                    <th>Time</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="overview-alerts-tbody">
+                  <tr><td colspan="5" style="text-align: center; color: var(--text-subtle);">Loading alerts...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recent Detections Stream -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <span class="panel-title">🚘 Recent Vehicle Detections</span>
+              <button class="btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="App.nav.switchView('detections')">Live Stream</button>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+              <table class="tactical-table">
+                <thead>
+                  <tr>
+                    <th>Plate</th>
+                    <th>Vehicle</th>
+                    <th>Confidence</th>
+                    <th>Camera</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody id="overview-detections-tbody">
+                  <tr><td colspan="5" style="text-align: center; color: var(--text-subtle);">Loading detections...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- 2. Camera Registry & Streams                                       -->
+      <!-- ================================================================== -->
+      <section id="view-cameras" class="view-pane">
+        <div class="view-header">
+          <div>
+            <h2>SURVEILLANCE CAMERA REGISTRY & STREAMS</h2>
+            <p>Official registry of connected edge cameras, RTSP streams, and telemetry health.</p>
+          </div>
+          <div class="view-actions">
+            <input id="camera-search-input" type="text" class="input-tactical" placeholder="Search camera name or city..." onkeyup="App.cameras.filter()" />
+            <select id="camera-status-filter" class="input-tactical" onchange="App.cameras.filter()">
+              <option value="ALL">All Statuses</option>
+              <option value="ONLINE">Online</option>
+              <option value="OFFLINE">Offline</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="panel-card" style="flex: 1;">
+          <div class="panel-body" style="padding: 0;">
+            <table class="tactical-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Camera Identifier</th>
+                  <th>Location / Jurisdiction</th>
+                  <th>Coordinates (WGS84)</th>
+                  <th>Stream Mode</th>
+                  <th>Resolution / Codec</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="cameras-table-tbody">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-subtle);">Loading cameras...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- 3. GIS Command Map                                                 -->
+      <!-- ================================================================== -->
+      <section id="view-gis" class="view-pane" style="padding: 10px;">
+        <div class="gis-container">
+          <div id="tile-offline-alert" class="tile-offline-banner">
+            MAP TILES UNAVAILABLE: External tile server offline. Cached WGS84 coordinates preserved.
+          </div>
+
+          <!-- Floating Proximity Search Tool -->
+          <div class="gis-floating-ctrl">
+            <span style="font-size: 11px; font-weight: 700; color: var(--cyan-primary);">RADIAL SEARCH:</span>
+            <input id="gis-search-lat" type="number" step="0.0001" placeholder="Lat" class="input-tactical" style="width: 80px; padding: 4px 6px; font-size: 11px;" value="23.0338" />
+            <input id="gis-search-lon" type="number" step="0.0001" placeholder="Lon" class="input-tactical" style="width: 80px; padding: 4px 6px; font-size: 11px;" value="72.5078" />
+            <input id="gis-search-radius" type="number" step="0.5" placeholder="Radius km" class="input-tactical" style="width: 75px; padding: 4px 6px; font-size: 11px;" value="5.0" />
+            <button class="btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick="App.gis.searchNearby()">Scan Radius</button>
+            <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="App.gis.resetView()">Reset Map</button>
+          </div>
+
+          <div id="gis-map-canvas"></div>
+
+          <!-- Unmapped Cameras Drawer -->
+          <div class="gis-drawer">
+            <div class="gis-drawer-header">
+              <span>Unmapped Sites</span>
+              <span id="gis-unmapped-count" style="color: var(--status-demo);">0</span>
+            </div>
+            <div id="gis-unmapped-list" class="gis-drawer-content">
+              <div style="font-size: 11px; color: var(--text-subtle);">Loading unmapped cameras...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- 4. Vehicle Search & Cross-Camera Journey                           -->
+      <!-- ================================================================== -->
+      <section id="view-vehicles" class="view-pane">
+        <div class="view-header">
+          <div>
+            <h2>VEHICLE HISTORY & CROSS-CAMERA CORRELATION</h2>
+            <p>Trace license plate movement across observation nodes with chronological sequence verification.</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+          <input id="vehicle-search-plate" type="text" class="input-tactical" placeholder="Enter Registration Plate (e.g. GJ01AB1234)" style="width: 320px; font-family: var(--font-mono); font-weight: 700;" value="GJ01AB1234" />
+          <button class="btn-primary" onclick="App.vehicles.search()">Search Vehicle</button>
+        </div>
+
+        <div id="vehicle-results-container" style="display: none; flex-direction: column; gap: 16px;">
+          <!-- Vehicle Summary Cards -->
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="card-label">Target Registration</div>
+              <div id="veh-summary-plate" class="card-value highlight-cyan">--</div>
+              <div class="card-subtext" id="veh-summary-class">Vehicle Type: --</div>
+            </div>
+            <div class="metric-card">
+              <div class="card-label">Total Observations</div>
+              <div id="veh-summary-count" class="card-value">--</div>
+              <div class="card-subtext">Across surveillance network</div>
+            </div>
+            <div class="metric-card">
+              <div class="card-label">First Sighted</div>
+              <div id="veh-summary-first" class="card-value" style="font-size: 14px;">--</div>
+              <div class="card-subtext" id="veh-summary-first-cam">Node: --</div>
+            </div>
+            <div class="metric-card">
+              <div class="card-label">Last Sighted</div>
+              <div id="veh-summary-last" class="card-value" style="font-size: 14px;">--</div>
+              <div class="card-subtext" id="veh-summary-last-cam">Node: --</div>
+            </div>
+          </div>
+
+          <!-- Cross-Camera Correlation Flowchart -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <span class="panel-title">🛤️ Cross-Camera Chronological Journey (Stage 12 Correlation)</span>
+              <button class="btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="App.vehicles.previewRouteOnGIS()">Plot on GIS Map</button>
+            </div>
+            <div class="panel-body">
+              <div id="veh-journey-sequence" class="journey-sequence">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Detailed Observations Table -->
+          <div class="panel-card">
+            <div class="panel-header">
+              <span class="panel-title">Detailed Sensor Observations</span>
+            </div>
+            <div class="panel-body" style="padding: 0;">
+              <table class="tactical-table">
+                <thead>
+                  <tr>
+                    <th>Observation Time</th>
+                    <th>Camera Node</th>
+                    <th>Location / City</th>
+                    <th>Confidence (Vehicle / Plate)</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody id="veh-observations-tbody">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- 5. Live Detections & ANPR Stream                                   -->
+      <!-- ================================================================== -->
+      <section id="view-detections" class="view-pane">
+        <div class="view-header">
+          <div>
+            <h2>AUTOMATED LICENSE PLATE RECOGNITION (ANPR) & DETECTIONS</h2>
+            <p>Real-time vehicle detection events, OCR text extraction, and bounding confidence metrics.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn-secondary" onclick="App.detections.refresh()">🔄 Refresh Stream</button>
+          </div>
+        </div>
+
+        <div class="panel-card" style="flex: 1;">
+          <div class="panel-body" style="padding: 0;">
+            <table class="tactical-table">
+              <thead>
+                <tr>
+                  <th>Detection Time</th>
+                  <th>License Plate</th>
+                  <th>Vehicle Type</th>
+                  <th>Vehicle Conf</th>
+                  <th>Plate Conf</th>
+                  <th>Camera Node</th>
+                  <th>Source Provenance</th>
+                </tr>
+              </thead>
+              <tbody id="detections-stream-tbody">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-subtle);">Loading detections...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- 6. Hotlists & Watchlists                                           -->
+      <!-- ================================================================== -->
+      <section id="view-watchlists" class="view-pane">
+        <div class="view-header">
+          <div>
+            <h2>ACTIVE HOTLISTS & WATCHLIST ENROLLMENT</h2>
+            <p>Stolen vehicles, criminal investigation targets, and automated ANPR threat matching catalogs.</p>
+          </div>
+          <div class="view-actions">
+            <button id="btn-add-watchlist-entry" class="btn-primary" onclick="App.ui.showAddEntryModal()">+ Enroll Target Plate</button>
+          </div>
+        </div>
+
+        <div class="panel-card" style="flex: 1;">
+          <div class="panel-body" style="padding: 0;">
+            <table class="tactical-table">
+              <thead>
+                <tr>
+                  <th>Hotlist Name</th>
+                  <th>Category</th>
+                  <th>Default Severity</th>
+                  <th>Active Status</th>
+                  <th>Enrolled Targets</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="watchlists-table-tbody">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-subtle);">Loading watchlists...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- 7. Alert Center                                                    -->
+      <!-- ================================================================== -->
+      <section id="view-alerts" class="view-pane">
+        <div class="view-header">
+          <div>
+            <h2>INCIDENT ALERT TRIAGE CENTER</h2>
+            <p>Real-time threat notifications triggered by automated watchlist matching engine.</p>
+          </div>
+          <div class="view-actions">
+            <select id="alert-severity-filter" class="input-tactical" onchange="App.alerts.filter()">
+              <option value="ALL">All Severities</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
+            </select>
+            <select id="alert-status-filter" class="input-tactical" onchange="App.alerts.filter()">
+              <option value="ALL">All Statuses</option>
+              <option value="NEW">New (Unacknowledged)</option>
+              <option value="ACKNOWLEDGED">Acknowledged</option>
+              <option value="RESOLVED">Resolved</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="panel-card" style="flex: 1;">
+          <div class="panel-body" style="padding: 0;">
+            <table class="tactical-table">
+              <thead>
+                <tr>
+                  <th>Severity</th>
+                  <th>Plate</th>
+                  <th>Alert Status</th>
+                  <th>Camera Node</th>
+                  <th>Trigger Time</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="alerts-table-tbody">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-subtle);">Loading alerts...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- 8. Investigation Workspace                                         -->
+      <!-- ================================================================== -->
+      <section id="view-investigations" class="view-pane">
+        <div class="view-header">
+          <div>
+            <h2>INVESTIGATION WORKSPACE (STAGE 13)</h2>
+            <p>Forensic case files correlating vehicle histories, attached observation evidence, and timeline reconstruction.</p>
+          </div>
+          <div class="view-actions">
+            <button id="btn-create-investigation" class="btn-primary" onclick="App.ui.showNewInvestigationModal()">+ New Investigation</button>
+          </div>
+        </div>
+
+        <div class="panel-card" style="flex: 1;">
+          <div class="panel-body" style="padding: 0;">
+            <table class="tactical-table">
+              <thead>
+                <tr>
+                  <th>Case Number</th>
+                  <th>Case Title</th>
+                  <th>Target Plate</th>
+                  <th>Status</th>
+                  <th>Lead Detective</th>
+                  <th>Created Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="investigations-table-tbody">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-subtle);">Loading investigations...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- 9. Audit Trail (SuperAdmin & Auditor)                              -->
+      <!-- ================================================================== -->
+      <section id="view-audit" class="view-pane">
+        <div class="view-header">
+          <div>
+            <h2>IMMUTABLE AUDIT TRAIL</h2>
+            <p>Append-only forensic record of all operational logins, modifications, and system events.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn-secondary" onclick="App.audit.refresh()">🔄 Refresh Log</button>
+          </div>
+        </div>
+
+        <div class="panel-card" style="flex: 1;">
+          <div class="panel-body" style="padding: 0;">
+            <table class="tactical-table">
+              <thead>
+                <tr>
+                  <th>Timestamp (UTC)</th>
+                  <th>Officer Badge</th>
+                  <th>Action Code</th>
+                  <th>Resource Type</th>
+                  <th>Client IP</th>
+                  <th>Summary Details</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-tbody">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-subtle);">Loading audit trail...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- 10. Personnel Access (SuperAdmin)                                  -->
+      <!-- ================================================================== -->
+      <section id="view-users" class="view-pane">
+        <div class="view-header">
+          <div>
+            <h2>PERSONNEL & ROLE-BASED ACCESS CONTROL</h2>
+            <p>Clearance management for police officers, investigators, operators, and auditors.</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn-primary" onclick="App.ui.showEnrollUserModal()">+ Enroll Officer</button>
+          </div>
+        </div>
+
+        <div class="panel-card" style="flex: 1;">
+          <div class="panel-body" style="padding: 0;">
+            <table class="tactical-table">
+              <thead>
+                <tr>
+                  <th>Badge Number</th>
+                  <th>Officer Name</th>
+                  <th>Official Email</th>
+                  <th>Clearance Role</th>
+                  <th>Department Unit</th>
+                  <th>Active Status</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-tbody">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-subtle);">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- Modals & Dialogs                                                       -->
+  <!-- ====================================================================== -->
+
+  <!-- 1. Authentication Modal -->
+  <div id="modal-login" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>POLICE PERSONNEL AUTHENTICATION</h3>
+        <span style="font-size: 11px; color: var(--text-subtle); font-family: var(--font-mono);">STAGE 15 RBAC</span>
+      </div>
+      <div class="modal-body">
+        <div id="login-error-alert" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid var(--sev-critical); color: #fca5a5; font-size: 12px; padding: 8px 12px; border-radius: 4px; margin-bottom: 12px;"></div>
+        
+        <div class="form-group">
+          <label>Badge Number or Email</label>
+          <input id="login-username" type="text" class="input-tactical" placeholder="SYS001 or admin@sentinel.internal" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input id="login-password" type="password" class="input-tactical" placeholder="••••••••••••" />
+        </div>
+
+        <div style="margin-top: 14px; font-size: 11px; color: var(--text-subtle);">
+          Quick Fill Role Verification:
+          <div class="demo-role-grid">
+            <button class="demo-role-btn" onclick="App.auth.quickFill('SYS001', 'SentinelAdmin2026!')">
+              <div>👑 SuperAdmin</div>
+              <div style="font-size: 9px; color: var(--text-subtle);">Full Master Clearance</div>
+            </button>
+            <button class="demo-role-btn" onclick="App.auth.quickFill('INV001', 'SentinelTest2026!')">
+              <div>🔍 Investigator</div>
+              <div style="font-size: 9px; color: var(--text-subtle);">Case & Evidence Access</div>
+            </button>
+            <button class="demo-role-btn" onclick="App.auth.quickFill('OP001', 'SentinelTest2026!')">
+              <div>📹 Operator</div>
+              <div style="font-size: 9px; color: var(--text-subtle);">Realtime Triage & ANPR</div>
+            </button>
+            <button class="demo-role-btn" onclick="App.auth.quickFill('AUD001', 'SentinelTest2026!')">
+              <div>🛡️ Auditor</div>
+              <div style="font-size: 9px; color: var(--text-subtle);">Compliance & Audit Trail</div>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="App.ui.hideModal('modal-login')">Cancel</button>
+        <button class="btn-primary" onclick="App.auth.submitLogin()">Authorize Session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. New Investigation Modal -->
+  <div id="modal-new-investigation" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Open New Case File</h3>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Case Number / FIR</label>
+          <input id="inv-create-case-number" type="text" class="input-tactical" placeholder="INV-2026-XXXX" />
+        </div>
+        <div class="form-group">
+          <label>Case Title</label>
+          <input id="inv-create-title" type="text" class="input-tactical" placeholder="Incident Title or Operation Name" />
+        </div>
+        <div class="form-group">
+          <label>Target Registration Plate (Optional)</label>
+          <input id="inv-create-plate" type="text" class="input-tactical" placeholder="GJ01XX1234" />
+        </div>
+        <div class="form-group">
+          <label>Case Description / Intelligence</label>
+          <textarea id="inv-create-desc" class="input-tactical" style="height: 80px; resize: vertical;" placeholder="Details of the investigation..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="App.ui.hideModal('modal-new-investigation')">Cancel</button>
+        <button class="btn-primary" onclick="App.investigations.submitCreate()">Create Case</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Enroll Target Plate Modal -->
+  <div id="modal-add-entry" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Enroll Vehicle on Hotlist</h3>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Target Watchlist</label>
+          <select id="entry-create-watchlist-id" class="input-tactical">
+            <option value="">Select Watchlist...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>License Plate</label>
+          <input id="entry-create-plate" type="text" class="input-tactical" placeholder="GJ01AB1234" />
+        </div>
+        <div class="form-group">
+          <label>FIR / Case Reference</label>
+          <input id="entry-create-fir" type="text" class="input-tactical" placeholder="FIR-101/2026" />
+        </div>
+        <div class="form-group">
+          <label>Vehicle Make / Model</label>
+          <input id="entry-create-model" type="text" class="input-tactical" placeholder="White SUV / Swift" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="App.ui.hideModal('modal-add-entry')">Cancel</button>
+        <button class="btn-primary" onclick="App.watchlists.submitAddEntry()">Enroll Plate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Video Stream Player Modal -->
+  <div id="modal-stream-player" class="modal-backdrop">
+    <div class="modal-box" style="max-width: 640px;">
+      <div class="modal-header">
+        <h3 id="stream-modal-cam-name">Camera Stream Preview</h3>
+        <span id="stream-modal-badge" class="badge-pill mode-demo">DEMO</span>
+      </div>
+      <div class="modal-body" style="padding: 10px; background: #000; text-align: center;">
+        <div id="stream-video-container" style="aspect-ratio: 16/9; background: #070a10; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-medium); border-radius: 4px; position: relative;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <div style="font-size: 32px;">📹</div>
+            <div id="stream-status-message" style="font-size: 13px; font-weight: 600; color: var(--text-muted);">ACTIVE DEMO STREAM FEED</div>
+            <div id="stream-rtsp-text" style="font-size: 11px; font-family: var(--font-mono); color: var(--text-subtle);">rtsp://...</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="App.ui.hideModal('modal-stream-player')">Close Stream</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Stack -->
+  <div id="toast-container"></div>
+
+  <!-- Application Logic -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

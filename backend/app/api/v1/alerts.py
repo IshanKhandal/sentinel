@@ -14,6 +14,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
+from backend.app.core.auth import require_permission
+from backend.app.core.permissions import PERMISSION_ALERTS_READ, PERMISSION_ALERTS_MANAGE
+from backend.app.models.access import User
 from backend.app.schemas.alert import (
     AlertRead,
     AlertListResponse,
@@ -46,6 +49,7 @@ def list_alerts(
     end_time: Optional[datetime] = Query(default=None, description="End created_at timestamp filter"),
     limit: int = Query(default=50, ge=1, le=200, description="Page limit (max 200)"),
     skip: int = Query(default=0, ge=0, description="Offset pagination"),
+    current_user: User = Depends(require_permission(PERMISSION_ALERTS_READ)),
     db: Session = Depends(get_db)
 ) -> AlertListResponse:
     """Query real-time and historical watchlist match alerts (docs/api-contract.md Section 9)."""
@@ -74,6 +78,7 @@ def list_alerts(
 @router.get("/{alert_id}", response_model=AlertRead)
 def get_alert(
     alert_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PERMISSION_ALERTS_READ)),
     db: Session = Depends(get_db)
 ) -> AlertRead:
     """Retrieve details and complete observation provenance of a single alert."""
@@ -90,14 +95,16 @@ def get_alert(
 def acknowledge_alert(
     alert_id: uuid.UUID,
     payload: AlertAcknowledgeRequest,
+    current_user: User = Depends(require_permission(PERMISSION_ALERTS_MANAGE)),
     db: Session = Depends(get_db)
 ) -> AlertRead:
     """Acknowledge and claim an alert by a responding police officer (docs/api-contract.md Section 9)."""
+    acting_user_id = payload.acknowledged_by_user_id or current_user.id
     try:
         alert = AlertService.acknowledge_alert(
             db=db,
             alert_id=alert_id,
-            user_id=payload.acknowledged_by_user_id,
+            user_id=acting_user_id,
             resolution_notes=payload.resolution_notes,
         )
         dto = AlertEngine.build_alert_read_dto(alert)
@@ -131,16 +138,18 @@ def acknowledge_alert(
 def update_alert_status(
     alert_id: uuid.UUID,
     payload: AlertStatusUpdateRequest,
+    current_user: User = Depends(require_permission(PERMISSION_ALERTS_MANAGE)),
     db: Session = Depends(get_db)
 ) -> AlertRead:
     """Update lifecycle disposition of an alert (e.g. RESOLVED, DISMISSED)."""
+    acting_user_id = payload.user_id or current_user.id
     try:
         alert = AlertService.update_alert_status(
             db=db,
             alert_id=alert_id,
             new_status=payload.status,
             resolution_notes=payload.resolution_notes,
-            user_id=payload.user_id,
+            user_id=acting_user_id,
         )
         dto = AlertEngine.build_alert_read_dto(alert)
         event_bus.publish_sync(
@@ -171,6 +180,7 @@ def update_alert_status(
 def evaluate_matches(
     matches: List[WatchlistMatchResult],
     window_seconds: Optional[int] = Query(default=None, ge=0, le=3600, description="Override 60-second deduplication window"),
+    current_user: User = Depends(require_permission(PERMISSION_ALERTS_MANAGE)),
     db: Session = Depends(get_db)
 ) -> AlertEngineResult:
     """Evaluate a batch of Stage 9 WatchlistMatchResults through the Alert Engine.

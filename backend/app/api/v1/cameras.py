@@ -9,6 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
+from backend.app.core.auth import require_permission
+from backend.app.core.permissions import PERMISSION_CAMERAS_READ, PERMISSION_CAMERAS_WRITE
+from backend.app.models.access import User
 from backend.app.models.surveillance import Camera
 from backend.app.schemas.camera import CameraResponse, CameraCreate, CameraSyncResponse
 from backend.app.services.camera_registry import CameraRegistryService
@@ -28,6 +31,7 @@ def list_cameras(
     stream_type: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_READ)),
     db: Session = Depends(get_db)
 ):
     """Retrieve list of all surveillance cameras with current stream states."""
@@ -44,6 +48,7 @@ def list_cameras(
 @router.get("/{camera_id}", response_model=CameraResponse)
 def get_camera(
     camera_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_READ)),
     db: Session = Depends(get_db)
 ):
     """Retrieve a single surveillance camera by UUID."""
@@ -59,6 +64,7 @@ def get_camera(
 @router.post("", response_model=CameraResponse, status_code=status.HTTP_201_CREATED)
 def create_camera(
     camera_in: CameraCreate,
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_WRITE)),
     db: Session = Depends(get_db)
 ):
     """Manually register a surveillance camera."""
@@ -81,6 +87,7 @@ def create_camera(
 
 @router.post("/sync", response_model=CameraSyncResponse)
 def sync_camera_catalogue(
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_WRITE)),
     db: Session = Depends(get_db)
 ):
     """Trigger synchronization against the official Sentinel camera catalogue (GET /api/ingest).
@@ -115,3 +122,4 @@ def sync_camera_catalogue(
         message=f"Synchronized {results['total_catalogue']} cameras from official catalogue.",
         results=results
     )
+

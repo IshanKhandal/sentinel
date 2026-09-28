@@ -14,6 +14,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
+from backend.app.core.auth import require_permission
+from backend.app.core.permissions import (
+    PERMISSION_WATCHLISTS_READ,
+    PERMISSION_WATCHLISTS_WRITE,
+    PERMISSION_WATCHLISTS_DELETE,
+)
+from backend.app.models.access import User
 from backend.app.models.intelligence import Detection
 from backend.app.schemas.watchlist import (
     WatchlistCreate,
@@ -50,6 +57,7 @@ def list_watchlists(
     category: Optional[str] = Query(default=None, description="Filter by category (STOLEN, WANTED, SUSPECT, EXPIRED)"),
     limit: int = Query(default=50, ge=1, le=200, description="Page limit (max 200)"),
     skip: int = Query(default=0, ge=0, description="Offset pagination"),
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_READ)),
     db: Session = Depends(get_db)
 ) -> WatchlistListResponse:
     """List configured police watchlists with optional status and category filters."""
@@ -85,6 +93,7 @@ def list_watchlists(
 def create_watchlist(
     payload: WatchlistCreate,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_WRITE)),
     db: Session = Depends(get_db)
 ) -> WatchlistRead:
     """Create a new police watchlist hotlist category."""
@@ -93,6 +102,7 @@ def create_watchlist(
         wl = WatchlistService.create_watchlist(
             db=db,
             data=payload,
+            user_id=current_user.id,
             ip_address=client_ip
         )
         return WatchlistRead(
@@ -120,6 +130,7 @@ def create_watchlist(
 @router.get("/{watchlist_id}", response_model=WatchlistRead)
 def get_watchlist(
     watchlist_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_READ)),
     db: Session = Depends(get_db)
 ) -> WatchlistRead:
     """Retrieve details of a specific police watchlist by ID."""
@@ -148,6 +159,7 @@ def update_watchlist(
     watchlist_id: uuid.UUID,
     payload: WatchlistUpdate,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_WRITE)),
     db: Session = Depends(get_db)
 ) -> WatchlistRead:
     """Update metadata or toggle active state of a police watchlist."""
@@ -191,6 +203,7 @@ def update_watchlist(
 def delete_watchlist(
     watchlist_id: uuid.UUID,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_DELETE)),
     db: Session = Depends(get_db)
 ):
     """Delete a police watchlist and all its enrolled vehicle registration entries."""
@@ -215,6 +228,7 @@ def list_watchlist_entries(
     plate_search: Optional[str] = Query(default=None, description="Search by plate number"),
     limit: int = Query(default=50, ge=1, le=200, description="Page limit (max 200)"),
     skip: int = Query(default=0, ge=0, description="Offset pagination"),
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_READ)),
     db: Session = Depends(get_db)
 ) -> WatchlistEntryListResponse:
     """List license plate registrations enrolled onto a specific watchlist."""
@@ -259,6 +273,7 @@ def enroll_plate(
     watchlist_id: uuid.UUID,
     payload: WatchlistEntryCreate,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_WRITE)),
     db: Session = Depends(get_db)
 ) -> WatchlistEntryRead:
     """Enroll a target license plate onto a police watchlist (docs/api-contract.md Section 8)."""
@@ -304,6 +319,7 @@ def enroll_plate(
 @router.get("/entries/{entry_id}", response_model=WatchlistEntryRead)
 def get_watchlist_entry(
     entry_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_READ)),
     db: Session = Depends(get_db)
 ) -> WatchlistEntryRead:
     """Retrieve details of a single enrolled plate entry."""
@@ -335,6 +351,7 @@ def update_watchlist_entry(
     entry_id: uuid.UUID,
     payload: WatchlistEntryUpdate,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_WRITE)),
     db: Session = Depends(get_db)
 ) -> WatchlistEntryRead:
     """Update details or active state of an enrolled watchlist plate."""
@@ -381,6 +398,7 @@ def update_watchlist_entry(
 def delete_watchlist_entry(
     entry_id: uuid.UUID,
     request: Request,
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_DELETE)),
     db: Session = Depends(get_db)
 ):
     """Delete an enrolled plate entry from its watchlist."""
@@ -404,6 +422,7 @@ def match_plate_on_demand(
     enable_fuzzy: Optional[bool] = Query(default=None, description="Override fuzzy matching toggle"),
     fuzzy_threshold: Optional[float] = Query(default=None, ge=0.0, le=1.0, description="Override similarity threshold"),
     fuzzy_max_distance: Optional[int] = Query(default=None, ge=0, le=5, description="Override max Levenshtein edit distance"),
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_READ)),
     db: Session = Depends(get_db)
 ) -> WatchlistMatchResponse:
     """Evaluate an observed license plate string directly against all active watchlists.
@@ -437,6 +456,7 @@ def match_persisted_detection(
     enable_fuzzy: Optional[bool] = Query(default=None, description="Override fuzzy matching toggle"),
     fuzzy_threshold: Optional[float] = Query(default=None, ge=0.0, le=1.0, description="Override similarity threshold"),
     fuzzy_max_distance: Optional[int] = Query(default=None, ge=0, le=5, description="Override max Levenshtein edit distance"),
+    current_user: User = Depends(require_permission(PERMISSION_WATCHLISTS_READ)),
     db: Session = Depends(get_db)
 ) -> WatchlistMatchResponse:
     """Evaluate a persisted Stage 8 detection against all active watchlists.

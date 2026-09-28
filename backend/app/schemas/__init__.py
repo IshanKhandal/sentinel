@@ -45,6 +45,17 @@ from backend.app.schemas.investigation import (
     AttachAlertRequest,
 )
 
+from backend.app.schemas.auth import (
+    LoginRequest,
+    LoginResponse,
+    UserSummary,
+    UserProfileResponse,
+    UserCreate,
+    UserUpdate,
+    UserRead,
+    UserListResponse,
+)
+
 __all__ = [
     "WatchlistCategory",
     "WatchlistSeverity",
@@ -79,4 +90,12 @@ __all__ = [
     "EvidenceRead",
     "AttachVehicleHistoryRequest",
     "AttachAlertRequest",
+    "LoginRequest",
+    "LoginResponse",
+    "UserSummary",
+    "UserProfileResponse",
+    "UserCreate",
+    "UserUpdate",
+    "UserRead",
+    "UserListResponse",
 ]

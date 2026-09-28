@@ -10,6 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
+from backend.app.core.auth import require_permission
+from backend.app.core.permissions import PERMISSION_CAMERAS_READ
+from backend.app.models.access import User
 from backend.app.schemas.gis import (
     GeoJSONFeatureCollection,
     NearbyCameraItem,
@@ -25,7 +28,8 @@ router = APIRouter(prefix="/gis", tags=["GIS & Geospatial"])
 def get_cameras_geojson(
     status_filter: Optional[str] = Query(None, alias="status"),
     stream_type: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_READ)),
 ):
     """Export all registered camera markers formatted as standard GeoJSON FeatureCollection.
 
@@ -44,7 +48,8 @@ def find_nearby_cameras(
     latitude: float = Query(..., ge=-90.0, le=90.0, description="Center latitude (-90 to 90)"),
     longitude: float = Query(..., ge=-180.0, le=180.0, description="Center longitude (-180 to 180)"),
     radius_km: float = Query(5.0, gt=0.0, le=50.0, description="Search radius in km (max 50.0)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_READ)),
 ):
     """Find cameras within a radial distance from a given geographic point using Haversine calculation."""
     try:
@@ -64,7 +69,10 @@ def find_nearby_cameras(
 
 
 @router.get("/unmapped")
-def get_unmapped_cameras(db: Session = Depends(get_db)):
+def get_unmapped_cameras(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_READ)),
+):
     """Retrieve list of registered surveillance cameras that do not have verified coordinates."""
     cameras = db.query(Camera).outerjoin(Location).all()
     unmapped = []
@@ -98,7 +106,8 @@ def get_unmapped_cameras(db: Session = Depends(get_db)):
 
 @router.post("/route-preview")
 def preview_route(
-    request: RoutePreviewRequest
+    request: RoutePreviewRequest,
+    current_user: User = Depends(require_permission(PERMISSION_CAMERAS_READ)),
 ):
     """Construct and preview a GeoJSON LineString from an ordered sequence of verified waypoints."""
     waypoints_dict = [wp.model_dump() for wp in request.waypoints]

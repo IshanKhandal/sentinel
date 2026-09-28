@@ -594,3 +594,50 @@ All non-2xx responses follow this uniform structure:
     }
   }
   ```
+
+---
+
+## 15. Audit Trail & Compliance
+
+### `GET /api/v1/audit-logs`
+- **Purpose:** Retrieve immutable, append-only system audit events (SuperAdmin and Auditor clearance required).
+- **Authentication:** Bearer Token (`require_permission("audit:read")`).
+- **Query Parameters:**
+  - `action`: Filter by action code (e.g. `AUTH_LOGIN_SUCCESS`, `USER_CREATE`, `ALERT_ACKNOWLEDGED`).
+  - `resource_type`: Filter by target entity (`USER`, `WATCHLIST`, `ALERT`, `INVESTIGATION`, `SYSTEM`).
+  - `badge_number`: Filter by actor badge.
+  - `skip`: Offset pagination (default 0).
+  - `limit`: Page limit (default 50, max 200).
+- **Response (200 OK):**
+  ```json
+  {
+    "total": 42,
+    "items": [
+      {
+        "id": "c0a80101-0000-0000-0000-000000000001",
+        "user_id": "00000000-0000-0000-0000-000000000001",
+        "badge_number": "SYS001",
+        "action": "AUTH_LOGIN_SUCCESS",
+        "resource_type": "USER",
+        "resource_id": "00000000-0000-0000-0000-000000000001",
+        "ip_address": "127.0.0.1",
+        "payload_summary": "{\"badge_number\": \"SYS001\", \"role\": \"SuperAdmin\"}",
+        "created_at": "2026-09-28T22:00:00Z"
+      }
+    ]
+  }
+  ```
+- **Invariant:** Strictly append-only. Zero PUT, PATCH, or DELETE routes exist on `/audit-logs`.
+
+---
+
+## 16. Tactical Command Center UI (Stage 16)
+
+### `GET /`
+- **Purpose:** Serve the single-page Tactical Command Center interface for Gujarat Police surveillance.
+- **Authentication:** None (Public presentation shell with client-side JWT authentication challenge).
+- **Response (200 OK):** `text/html; charset=utf-8`.
+- **Assets:**
+  - `GET /static/style.css`: Modern command-center styling system.
+  - `GET /static/app.js`: Tactical application logic engine, WebSocket router, and Leaflet GIS integration.
+

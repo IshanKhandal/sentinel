@@ -14,6 +14,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
+from backend.app.core.auth import require_permission
+from backend.app.core.permissions import PERMISSION_DETECTIONS_READ
+from backend.app.models.access import User
 from backend.app.schemas.detection import DetectionRead, DetectionListResponse
 from backend.app.schemas.anpr import ANPRResult
 from backend.app.services.event_persistence import (
@@ -37,6 +40,7 @@ def list_detections(
     end_time: Optional[datetime] = Query(default=None, description="End time range filter (UTC ISO 8601)"),
     limit: int = Query(default=50, ge=1, le=200, description="Page limit (max 200)"),
     skip: int = Query(default=0, ge=0, description="Offset pagination"),
+    current_user: User = Depends(require_permission(PERMISSION_DETECTIONS_READ)),
     db: Session = Depends(get_db)
 ) -> DetectionListResponse:
     """Search and filter historical vehicle detections across the camera network."""
@@ -87,6 +91,7 @@ def list_detections(
 @router.get("/{detection_id}", response_model=DetectionRead)
 def get_detection(
     detection_id: uuid.UUID,
+    current_user: User = Depends(require_permission(PERMISSION_DETECTIONS_READ)),
     db: Session = Depends(get_db)
 ) -> DetectionRead:
     """Retrieve details for a single detection observation by UUID."""
@@ -122,6 +127,7 @@ def get_detection(
 @router.post("", response_model=DetectionRead, status_code=status.HTTP_201_CREATED)
 def persist_detection_event(
     anpr_result: ANPRResult,
+    current_user: User = Depends(require_permission(PERMISSION_DETECTIONS_READ)),
     db: Session = Depends(get_db)
 ) -> DetectionRead:
     """Persist an upstream Stage 7 ANPRResult into the permanent detections store."""

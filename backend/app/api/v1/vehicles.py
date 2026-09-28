@@ -14,6 +14,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
+from backend.app.core.auth import require_permission
+from backend.app.core.permissions import PERMISSION_DETECTIONS_READ
+from backend.app.models.access import User
 from backend.app.schemas.vehicle import (
     VehicleProfileRead,
     VehicleHistoryResponse,
@@ -37,6 +40,7 @@ router = APIRouter(prefix="/vehicles", tags=["vehicles"])
 @router.get("/{plate_number}", response_model=VehicleProfileRead)
 def get_vehicle_profile(
     plate_number: str,
+    current_user: User = Depends(require_permission(PERMISSION_DETECTIONS_READ)),
     db: Session = Depends(get_db)
 ) -> VehicleProfileRead:
     """Retrieve canonical vehicle profile, observation statistics, and active watchlist status.
@@ -68,6 +72,7 @@ def get_vehicle_history(
     order: str = Query(default="asc", pattern="^(asc|desc|ASC|DESC)$", description="Sort order: 'asc' (chronological) or 'desc' (latest first)"),
     limit: int = Query(default=50, ge=1, le=200, description="Page limit (max 200)"),
     skip: int = Query(default=0, ge=0, description="Offset pagination"),
+    current_user: User = Depends(require_permission(PERMISSION_DETECTIONS_READ)),
     db: Session = Depends(get_db)
 ) -> VehicleHistoryResponse:
     """Query chronological observation history for a license plate.
@@ -119,6 +124,7 @@ def get_vehicle_journey(
     end_time: Optional[datetime] = Query(default=None, description="End observation timestamp filter (ISO 8601 UTC)"),
     max_speed_kmh: float = Query(default=DEFAULT_MAX_SPEED_THRESHOLD_KMH, gt=0.0, description="Maximum physically plausible speed threshold in km/h"),
     limit: int = Query(default=500, ge=1, le=1000, description="Maximum observations to correlate"),
+    current_user: User = Depends(require_permission(PERMISSION_DETECTIONS_READ)),
     db: Session = Depends(get_db)
 ) -> VehicleJourneyResponse:
     """Reconstruct cross-camera vehicle observation sequence, camera transitions, and implied velocity.

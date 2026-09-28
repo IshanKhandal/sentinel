@@ -13,6 +13,13 @@ env/
 venv/
 .venv/
 ENV/
+.pytest_cache/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+sentinel.db
 
 # Production builds
 dist/

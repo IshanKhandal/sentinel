@@ -259,15 +259,30 @@ All non-2xx responses follow this uniform structure:
 
 ### `GET /api/v1/alerts`
 - **Purpose:** Query real-time and historical watchlist match alerts.
-- **Query Params:** `status` (`NEW`, `ACKNOWLEDGED`, `RESOLVED`, `DISMISSED`), `severity` (`CRITICAL`, `HIGH`), `limit`.
-- **Response (200 OK):** Array of alert items sorted by `created_at` descending.
+- **Query Params:** `status` (`NEW`, `ACKNOWLEDGED`, `RESOLVED`, `DISMISSED`), `severity` (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`), `camera_id`, `plate_number`, `start_time`, `end_time`, `limit`, `skip`.
+- **Response (200 OK):** `AlertListResponse` with total count and array of alert items with full provenance sorted by `created_at` descending.
+
+### `GET /api/v1/alerts/{alert_id}`
+- **Purpose:** Retrieve single operational alert by UUID with joined observation and watchlist provenance.
+- **Response (200 OK):** `AlertRead` entity.
 
 ### `PATCH /api/v1/alerts/{alert_id}/acknowledge`
 - **Purpose:** Acknowledge and claim an alert by a responding police officer.
-- **Request Body:** `{ "resolution_notes": "Officer unit 12 dispatched to intercept" }`.
-- **Response (200 OK):** Updated alert entity.
+- **Request Body:** `{ "resolution_notes": "Officer unit 12 dispatched to intercept", "acknowledged_by_user_id": "optional-uuid" }`.
+- **Response (200 OK):** Updated alert entity with `status = "ACKNOWLEDGED"` and `acknowledged_at`.
 - **Authorization:** Any authenticated operator.
-- **Audit Logging:** Mandated.
+- **Audit Logging:** Mandated in `audit_logs`.
+
+### `PATCH /api/v1/alerts/{alert_id}/status`
+- **Purpose:** Transition operational alert disposition (e.g. `RESOLVED`, `DISMISSED`).
+- **Request Body:** `{ "status": "RESOLVED", "resolution_notes": "Suspect vehicle intercepted", "user_id": "optional-uuid" }`.
+- **Response (200 OK):** Updated alert entity.
+- **Audit Logging:** Mandated in `audit_logs`.
+
+### `POST /api/v1/alerts/evaluate-matches`
+- **Purpose:** Evaluate Stage 9 watchlist matches through Alert Engine with 60-second deduplication.
+- **Request Body:** Array of `WatchlistMatchResult` objects.
+- **Response (201 Created):** `AlertEngineResult` with created alerts and deduplicated count.
 
 ---
 

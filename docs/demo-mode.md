@@ -91,3 +91,12 @@ The system formally supports **EXACTLY TWO** mutually isolated operational modes
 - **Zero Fake Seed Hotlists:** No synthetic wanted persons, fake FIR numbers, or mock stolen vehicle hotlists are pre-seeded into the production database. The live database tables `watchlists` and `watchlist_entries` remain at 0 rows until authorized officers configure them.
 - **Accuracy Invariant:** Watchlist matching performance is reported strictly as `Matching accuracy: NOT BENCHMARKED` until verified benchmarks on representative datasets are performed.
 
+---
+
+## 8. Alert Engine Data Fidelity & Provenance
+
+- **`is_demo` Alert Provenance:** Every alert created from a DEMO detection strictly exposes `is_demo = True` via its underlying detection association in `AlertRead`.
+- **Zero Alert Fabrication:** Alerts are generated exclusively upon verified Stage 9 watchlist match events. No synthetic alerts are fabricated to populate dashboards or mock system activity.
+- **Live Database Invariant:** The live database table `alerts` remains strictly at 0 rows until authentic matches are processed.
+- **Performance Invariant:** Alert generation throughput and deduplication latency are explicitly reported as `Alert performance: NOT BENCHMARKED` until verified benchmarks are conducted.
+

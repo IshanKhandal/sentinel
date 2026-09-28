@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     WATCHLIST_FUZZY_MAX_DISTANCE: int = 1
     WATCHLIST_OCR_CONFIDENCE_THRESHOLD: float = 0.40
 
+    # Alert Engine & Deduplication Configuration (Stage 10 Architecture)
+    ALERT_DEDUPLICATION_WINDOW_SECONDS: int = 60  # Frozen architecture 60-second suppression window
+
 
 
     

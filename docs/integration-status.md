@@ -37,6 +37,10 @@
 | Watchlist Storage & Indexes | Hotlist storage backed by `idx_watchlist_entries_plate_active` | SQLite `sentinel.db` | YES | Local SQLite Engine | Local filesystem | VERIFIED WORKING | Index verified on `(plate_number, is_active)`; `UniqueConstraint("watchlist_id", "plate_number")` enforced | None |
 | Live Government Watchlist Feeds | Integration with live external police/state hotlist databases | Government transport / police databases | NO | UNKNOWN (DO NOT INVENT) | UNKNOWN | UNVERIFIED / BLOCKED | No external government watchlist feeds configured in workspace | External access credentials unprovided |
 | Watchlist Matching Accuracy Benchmark | Precision, recall, and false-positive benchmark under noise | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | Unbenchmarked local prototype; adheres strictly to Rule 10 | Benchmark dataset unconfigured |
+| Real-Time Alert Engine | Alert generation, 60s deduplication window, lifecycle disposition | `backend/app/services/alert/engine.py`, `service.py` | YES | Internal Service | Application context | VERIFIED WORKING | 9 unit/API tests passing; 60s deduplication, multi-camera, multi-match verified | None |
+| Alert Storage & Indexes | Relational storage backed by `idx_alerts_status_created`, `idx_alerts_plate`, `idx_alerts_camera` | SQLite `sentinel.db` | YES | Local SQLite Engine | Local filesystem | VERIFIED WORKING | Indexes verified on status/created_at, plate, camera; foreign key integrity verified | None |
+| External Notification Dispatch | Push, SMS, Twilio, Email, Slack notification delivery | External notification providers | NO | UNKNOWN (DO NOT INVENT) | UNKNOWN | EXCLUDED / UNCONFIGURED | Explicitly excluded from Stage 10 scope; no external notification credentials present | Notification gateways unconfigured |
+| Alert Performance Benchmark | Alert generation throughput and deduplication latency under load | Benchmark harness | NO | Benchmark Harness | Test dataset | NOT BENCHMARKED | Unbenchmarked local prototype; adheres strictly to Rule 10 | Benchmark dataset/harness unconfigured |
 
 
 

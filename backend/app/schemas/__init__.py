@@ -15,6 +15,16 @@ from backend.app.schemas.watchlist import (
     PlateMatchRequest,
 )
 
+from backend.app.schemas.alert import (
+    AlertStatus,
+    AlertSeverity,
+    AlertRead,
+    AlertListResponse,
+    AlertAcknowledgeRequest,
+    AlertStatusUpdateRequest,
+    AlertEngineResult,
+)
+
 __all__ = [
     "WatchlistCategory",
     "WatchlistSeverity",
@@ -28,4 +38,11 @@ __all__ = [
     "WatchlistMatchResult",
     "WatchlistMatchResponse",
     "PlateMatchRequest",
+    "AlertStatus",
+    "AlertSeverity",
+    "AlertRead",
+    "AlertListResponse",
+    "AlertAcknowledgeRequest",
+    "AlertStatusUpdateRequest",
+    "AlertEngineResult",
 ]

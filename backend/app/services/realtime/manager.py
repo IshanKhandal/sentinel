@@ -97,28 +97,17 @@ class WebSocketManager:
 
         # Validate authentication token if provided (Stage 15 RBAC Enforcement)
         if token is not None:
-            if token.lower() in ("invalid", "expired", "unauthorized", "bad"):
-                logger.warning("Rejecting WebSocket connection: invalid or expired token provided.")
-                await websocket.close(code=4401, reason="Unauthorized: Invalid or expired token")
-                return None
-            if token == "valid-jwt-token":
-                user_id = "00000000-0000-0000-0000-000000000001"
-                badge_number = "TEST_BADGE"
-                role = ROLE_INVESTIGATOR
-                permissions = ROLE_PERMISSIONS_MATRIX.get(ROLE_INVESTIGATOR, set())
+            try:
+                jwt_payload = decode_access_token(token)
+                user_id = jwt_payload.get("sub")
+                badge_number = jwt_payload.get("badge")
+                role = jwt_payload.get("role")
+                permissions = ROLE_PERMISSIONS_MATRIX.get(role, set())
                 auth_verified = True
-            else:
-                try:
-                    jwt_payload = decode_access_token(token)
-                    user_id = jwt_payload.get("sub")
-                    badge_number = jwt_payload.get("badge")
-                    role = jwt_payload.get("role")
-                    permissions = ROLE_PERMISSIONS_MATRIX.get(role, set())
-                    auth_verified = True
-                except (TokenExpiredError, TokenInvalidError) as exc:
-                    logger.warning(f"Rejecting WebSocket connection: {exc}")
-                    await websocket.close(code=4401, reason=f"Unauthorized: {exc}")
-                    return None
+            except (TokenExpiredError, TokenInvalidError) as exc:
+                logger.warning(f"Rejecting WebSocket connection: {exc}")
+                await websocket.close(code=4401, reason=f"Unauthorized: {exc}")
+                return None
 
         # Check max connection ceiling to protect against FD exhaustion
         async with self._lock:

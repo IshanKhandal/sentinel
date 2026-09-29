@@ -109,3 +109,30 @@ def default_auth_context(db_session: Session):
     app.dependency_overrides.pop(get_current_user, None)
     app.dependency_overrides.pop(get_db, None)
 
+
+@pytest.fixture
+def unauthenticated_client(db_session: Session):
+    """Provide a TestClient with no get_current_user override for tests exercising missing or invalid bearer tokens."""
+    from backend.app.core.auth import get_current_user
+    from backend.app.db.session import get_db
+    from backend.app.main import app
+    from fastapi.testclient import TestClient
+
+    # Remove get_current_user override so real bearer-token auth is enforced
+    app.dependency_overrides.pop(get_current_user, None)
+
+    def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def unauthenticated(unauthenticated_client):
+    """Alias for unauthenticated_client fixture."""
+    return unauthenticated_client
+
+

@@ -84,7 +84,7 @@ class AuthService:
             # Log authentication failure in append-only audit log
             audit_log = AuditLog(
                 user_id=user.id if user else None,
-                badge_number=username_clean,
+                badge_number=username_clean[:50],
                 action="AUTH_LOGIN_FAILURE",
                 resource_type="USER",
                 resource_id=username_clean,

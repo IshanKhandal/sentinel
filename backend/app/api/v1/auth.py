@@ -67,7 +67,7 @@ def login(
     except UserDeactivatedError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(exc),
+            detail="Invalid badge number or password.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
 

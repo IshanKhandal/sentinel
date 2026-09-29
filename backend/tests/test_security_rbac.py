@@ -103,18 +103,9 @@ def auth_test_setup(db_session: Session):
 
 
 @pytest.fixture
-def client_raw(db_session: Session):
-    """TestClient that uses real auth (pops get_current_user override)."""
-    # Remove conftest mock override to test real JWT auth
-    app.dependency_overrides.pop(get_current_user, None)
-
-    def override_get_db():
-        yield db_session
-
-    app.dependency_overrides[get_db] = override_get_db
-    test_client = TestClient(app)
-    yield test_client
-    app.dependency_overrides.pop(get_db, None)
+def client_raw(unauthenticated_client):
+    """TestClient that uses real auth (provided by conftest unauthenticated_client)."""
+    return unauthenticated_client
 
 
 # ---------------------------------------------------------------------------
@@ -272,8 +263,27 @@ def test_login_nonexistent_user(client_raw, auth_test_setup):
     assert response.status_code == 401
 
 
-def test_login_inactive_user(client_raw, auth_test_setup):
-    """Verify deactivated user cannot login (401)."""
+def test_login_long_username_truncates_audit_badge(client_raw, auth_test_setup, db_session):
+    """Verify long identifier exceeding 50 characters is truncated in AuditLog.badge_number."""
+    long_identifier = "A" * 80
+    response = client_raw.post(
+        "/api/v1/auth/login",
+        json={"identifier": long_identifier, "password": "AnyPassword!"},
+    )
+    assert response.status_code == 401
+    audit = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "AUTH_LOGIN_FAILURE", AuditLog.resource_id == long_identifier)
+        .first()
+    )
+    assert audit is not None
+    assert audit.badge_number == "A" * 50
+    assert len(audit.badge_number) == 50
+    assert audit.resource_id == long_identifier
+
+
+def test_login_inactive_user(client_raw, auth_test_setup, db_session):
+    """Verify deactivated user cannot login (401) and receives generic message while preserving audit reason."""
     inactive = auth_test_setup["inactive_user"]
     password = auth_test_setup["password"]
 
@@ -282,7 +292,16 @@ def test_login_inactive_user(client_raw, auth_test_setup):
         json={"identifier": inactive.badge_number, "password": password},
     )
     assert response.status_code == 401
-    assert "deactivated" in response.text.lower()
+    assert "invalid badge number or password" in response.text.lower()
+    assert "deactivated" not in response.text.lower()
+
+    audit = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.user_id == inactive.id, AuditLog.action == "AUTH_LOGIN_FAILURE")
+        .first()
+    )
+    assert audit is not None
+    assert "Account deactivated" in audit.payload_summary
 
 
 def test_auth_me_endpoint(client_raw, auth_test_setup):
@@ -340,6 +359,13 @@ def test_unauthenticated_requests_fail(client_raw):
     # Users
     r4 = client_raw.get("/api/v1/users/")
     assert r4.status_code == 401
+
+
+def test_conftest_unauthenticated_fixture(unauthenticated):
+    """Verify conftest unauthenticated fixture exercises missing bearer-token behavior without default override."""
+    res = unauthenticated.get("/api/v1/watchlists")
+    assert res.status_code == 401
+    assert "credentials were not provided" in res.text.lower()
 
 
 def test_rbac_operator_cannot_manage_users(client_raw, auth_test_setup):

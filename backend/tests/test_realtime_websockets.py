@@ -18,6 +18,8 @@ from sqlalchemy.orm import Session
 
 from backend.app.main import app
 from backend.app.core.config import settings
+from backend.app.core.security import create_access_token
+from backend.app.core.permissions import ROLE_INVESTIGATOR
 from backend.app.db.session import get_db
 from backend.app.models.access import Department, Role, User
 from backend.app.models.surveillance import Location, Camera
@@ -98,8 +100,14 @@ def test_websocket_auth_explicit_invalid_token_rejected():
 
 def test_websocket_auth_valid_token_accepted():
     """Verify connection with valid token succeeds."""
+    token = create_access_token({
+        "sub": "00000000-0000-0000-0000-000000000001",
+        "badge": "TEST_BADGE",
+        "role": ROLE_INVESTIGATOR,
+        "dept": "CYBER_CRIME",
+    })
     client = TestClient(app)
-    with client.websocket_connect("/api/v1/ws/events?token=valid-jwt-token") as websocket:
+    with client.websocket_connect(f"/api/v1/ws/events?token={token}") as websocket:
         data = websocket.receive_json()
         assert data["event"] == "connection.acknowledged"
 

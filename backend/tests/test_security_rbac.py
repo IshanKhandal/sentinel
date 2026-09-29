@@ -517,3 +517,154 @@ def test_websocket_rejects_unauthenticated_connection(client_raw):
         with client_raw.websocket_connect("/ws/live?token=invalid_token") as ws:
             pass
 
+
+def test_alert_user_id_override_security_authorization(db_session: Session, auth_test_setup, client_raw):
+    """Verify non-SuperAdmin cannot override acting_user_id in alert acknowledge/status update."""
+    from backend.app.models.surveillance import Location, Camera
+    from backend.app.models.intelligence import Detection
+    from backend.app.models.watchlists import Watchlist, WatchlistEntry
+    from backend.app.models.alerts import Alert
+
+    dept = auth_test_setup["dept"]
+    super_admin = auth_test_setup["users"][ROLE_SUPER_ADMIN]
+    operator = auth_test_setup["users"][ROLE_OPERATOR]
+    investigator = auth_test_setup["users"][ROLE_INVESTIGATOR]
+
+    loc = Location(name="Test Sec Loc", city="Ahmedabad")
+    db_session.add(loc)
+    db_session.flush()
+
+    cam = Camera(
+        name="Test Sec Cam",
+        location_id=loc.id,
+        department_id=dept.id,
+        rtsp_url="rtsp://10.0.0.1/live",
+        stream_type="LIVE",
+        status="ONLINE",
+    )
+    db_session.add(cam)
+    db_session.flush()
+
+    det = Detection(
+        camera_id=cam.id,
+        detected_at=datetime.now(timezone.utc),
+        plate_number="GJ01SEC01",
+        confidence_plate=0.95,
+        confidence_vehicle=0.95,
+        vehicle_type="car",
+        bbox_vehicle=[10, 20, 30, 40],
+        snapshot_path="/snapshots/sec_test.jpg",
+    )
+    db_session.add(det)
+    db_session.flush()
+
+    wl = Watchlist(
+        name="Sec Test Hotlist",
+        category="STOLEN",
+        severity="CRITICAL",
+        is_active=True,
+        created_by_user_id=super_admin.id,
+    )
+    db_session.add(wl)
+    db_session.flush()
+
+    wle = WatchlistEntry(
+        watchlist_id=wl.id,
+        plate_number="GJ01SEC01",
+        is_active=True,
+    )
+    db_session.add(wle)
+    db_session.flush()
+
+    alert = Alert(
+        detection_id=det.id,
+        watchlist_entry_id=wle.id,
+        camera_id=cam.id,
+        plate_number="GJ01SEC01",
+        severity="CRITICAL",
+        status="NEW",
+    )
+    db_session.add(alert)
+    db_session.commit()
+
+    # Operator token (has alerts:manage)
+    op_token = create_access_token({"sub": str(operator.id)})
+    op_headers = {"Authorization": f"Bearer {op_token}"}
+
+    # Attempt to spoof acknowledged_by_user_id as investigator
+    res = client_raw.patch(
+        f"/api/v1/alerts/{alert.id}/acknowledge",
+        headers=op_headers,
+        json={"acknowledged_by_user_id": str(investigator.id), "resolution_notes": "Spoofed attempt"}
+    )
+    assert res.status_code == 403
+    assert "SuperAdmin clearance" in res.json()["detail"]
+
+    # When operator does NOT pass an override or passes their own id, it succeeds
+    res_valid = client_raw.patch(
+        f"/api/v1/alerts/{alert.id}/acknowledge",
+        headers=op_headers,
+        json={"resolution_notes": "Legitimate officer claim"}
+    )
+    assert res_valid.status_code == 200
+    assert res_valid.json()["acknowledged_by_user_id"] == str(operator.id)
+
+
+def test_watchlist_audited_mutations_user_attribution(db_session: Session, auth_test_setup, client_raw):
+    """Verify watchlist update, update_entry, and delete_entry record the caller's user_id in audit log."""
+    from backend.app.models.audit import AuditLog
+
+    super_admin = auth_test_setup["users"][ROLE_SUPER_ADMIN]
+    admin_token = create_access_token({"sub": str(super_admin.id)})
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # Create watchlist
+    res = client_raw.post(
+        "/api/v1/watchlists",
+        headers=admin_headers,
+        json={"name": "Audit Actor Hotlist", "category": "STOLEN", "severity": "HIGH", "is_active": True}
+    )
+    assert res.status_code == 201
+    wl_id = res.json()["id"]
+
+    # Update watchlist
+    res_up = client_raw.patch(
+        f"/api/v1/watchlists/{wl_id}",
+        headers=admin_headers,
+        json={"name": "Audit Actor Hotlist Renamed"}
+    )
+    assert res_up.status_code == 200
+
+    # Enroll entry
+    res_en = client_raw.post(
+        f"/api/v1/watchlists/{wl_id}/entries",
+        headers=admin_headers,
+        json={"plate_number": "GJ01AUD01"}
+    )
+    assert res_en.status_code == 201
+    entry_id = res_en.json()["id"]
+
+    # Update entry
+    res_eup = client_raw.patch(
+        f"/api/v1/watchlists/entries/{entry_id}",
+        headers=admin_headers,
+        json={"notes": "Audited note update"}
+    )
+    assert res_eup.status_code == 200
+
+    # Delete entry
+    res_edel = client_raw.delete(
+        f"/api/v1/watchlists/entries/{entry_id}",
+        headers=admin_headers
+    )
+    assert res_edel.status_code == 204
+
+    # Verify audit logs have user_id = super_admin.id
+    logs = db_session.query(AuditLog).filter(AuditLog.user_id == super_admin.id).all()
+    actions = {l.action for l in logs}
+    assert "WATCHLIST_UPDATE" in actions
+    assert "WATCHLIST_ENTRY_ADD" in actions
+    assert "WATCHLIST_ENTRY_UPDATE" in actions
+    assert "WATCHLIST_ENTRY_DELETE" in actions
+
+

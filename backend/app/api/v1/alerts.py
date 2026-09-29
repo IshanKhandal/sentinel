@@ -15,7 +15,11 @@ from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
 from backend.app.core.auth import require_permission
-from backend.app.core.permissions import PERMISSION_ALERTS_READ, PERMISSION_ALERTS_MANAGE
+from backend.app.core.permissions import (
+    PERMISSION_ALERTS_READ,
+    PERMISSION_ALERTS_MANAGE,
+    ROLE_SUPER_ADMIN,
+)
 from backend.app.models.access import User
 from backend.app.schemas.alert import (
     AlertRead,
@@ -99,7 +103,15 @@ def acknowledge_alert(
     db: Session = Depends(get_db)
 ) -> AlertRead:
     """Acknowledge and claim an alert by a responding police officer (docs/api-contract.md Section 9)."""
-    acting_user_id = payload.acknowledged_by_user_id or current_user.id
+    acting_user_id = current_user.id
+    if payload.acknowledged_by_user_id and payload.acknowledged_by_user_id != current_user.id:
+        if current_user.role and current_user.role.name == ROLE_SUPER_ADMIN:
+            acting_user_id = payload.acknowledged_by_user_id
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acting on behalf of another officer requires SuperAdmin clearance."
+            )
     try:
         alert = AlertService.acknowledge_alert(
             db=db,
@@ -142,7 +154,15 @@ def update_alert_status(
     db: Session = Depends(get_db)
 ) -> AlertRead:
     """Update lifecycle disposition of an alert (e.g. RESOLVED, DISMISSED)."""
-    acting_user_id = payload.user_id or current_user.id
+    acting_user_id = current_user.id
+    if payload.user_id and payload.user_id != current_user.id:
+        if current_user.role and current_user.role.name == ROLE_SUPER_ADMIN:
+            acting_user_id = payload.user_id
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acting on behalf of another officer requires SuperAdmin clearance."
+            )
     try:
         alert = AlertService.update_alert_status(
             db=db,

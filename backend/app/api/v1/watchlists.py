@@ -169,6 +169,7 @@ def update_watchlist(
             db=db,
             watchlist_id=watchlist_id,
             data=payload,
+            user_id=current_user.id,
             ip_address=client_ip
         )
         entries_count = len([e for e in wl.entries if e.is_active]) if wl.entries else 0
@@ -209,7 +210,12 @@ def delete_watchlist(
     """Delete a police watchlist and all its enrolled vehicle registration entries."""
     client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     try:
-        WatchlistService.delete_watchlist(db=db, watchlist_id=watchlist_id, ip_address=client_ip)
+        WatchlistService.delete_watchlist(
+            db=db,
+            watchlist_id=watchlist_id,
+            user_id=current_user.id,
+            ip_address=client_ip
+        )
     except WatchlistNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -283,6 +289,7 @@ def enroll_plate(
             db=db,
             watchlist_id=watchlist_id,
             data=payload,
+            user_id=current_user.id,
             ip_address=client_ip
         )
         wl = entry.watchlist
@@ -361,6 +368,7 @@ def update_watchlist_entry(
             db=db,
             entry_id=entry_id,
             data=payload,
+            user_id=current_user.id,
             ip_address=client_ip
         )
         wl = entry.watchlist
@@ -404,7 +412,12 @@ def delete_watchlist_entry(
     """Delete an enrolled plate entry from its watchlist."""
     client_ip = request.client.host if (request and request.client) else "127.0.0.1"
     try:
-        WatchlistService.delete_entry(db=db, entry_id=entry_id, ip_address=client_ip)
+        WatchlistService.delete_entry(
+            db=db,
+            entry_id=entry_id,
+            user_id=current_user.id,
+            ip_address=client_ip
+        )
     except WatchlistNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -43,9 +43,15 @@ const App = {
       try {
         const response = await fetch(endpoint, options);
         if (response.status === 401) {
+          if (endpoint.includes("/api/v1/auth/login")) {
+            const errData = await response.json().catch(() => ({ detail: "Invalid credentials" }));
+            throw new Error(errData.detail || "Invalid credentials");
+          }
           // Token expired or invalid
           App.state.token = null;
+          App.state.user = null;
           sessionStorage.removeItem("sentinel_token");
+          App.ws.disconnect();
           App.ui.updateAuthUI();
           App.ui.showToast("Session expired or unauthorized. Please authenticate.", "error");
           App.ui.showLoginModal();
@@ -228,25 +234,28 @@ const App = {
       }
 
       try {
-        App.state.ws = new WebSocket(wsUrl);
+        const socket = new WebSocket(wsUrl);
+        App.state.ws = socket;
 
-        App.state.ws.onopen = () => {
+        socket.onopen = () => {
+          if (App.state.ws !== socket) return;
           this.setConnectedUI(true);
           // Subscribe to standard tactical broadcast channels
-          App.state.ws.send(JSON.stringify({
+          socket.send(JSON.stringify({
             action: "subscribe",
             topics: ["all"],
           }));
 
           // Heartbeat ping every 25 seconds
           App.state.wsHeartbeatTimer = setInterval(() => {
-            if (App.state.ws && App.state.ws.readyState === WebSocket.OPEN) {
-              App.state.ws.send(JSON.stringify({ type: "ping" }));
+            if (App.state.ws === socket && socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ type: "ping" }));
             }
           }, 25000);
         };
 
-        App.state.ws.onmessage = (event) => {
+        socket.onmessage = (event) => {
+          if (App.state.ws !== socket) return;
           App.state.wsEventCount++;
           const statCounter = document.getElementById("stat-ws-events");
           if (statCounter) statCounter.textContent = App.state.wsEventCount;
@@ -259,7 +268,8 @@ const App = {
           }
         };
 
-        App.state.ws.onclose = (event) => {
+        socket.onclose = (event) => {
+          if (App.state.ws !== socket) return;
           this.setConnectedUI(false);
           this.cleanup();
           // Auto reconnect if not closed by user
@@ -271,7 +281,8 @@ const App = {
           }
         };
 
-        App.state.ws.onerror = (err) => {
+        socket.onerror = (err) => {
+          if (App.state.ws !== socket) return;
           console.warn("WebSocket transport error:", err);
         };
       } catch (err) {
@@ -853,11 +864,11 @@ const App = {
       tbody.innerHTML = items.map((d) => `
         <tr>
           <td style="font-family: var(--font-mono); font-size: 11px;">${App.ui.formatTime(d.detected_at)}</td>
-          <td><span class="plate-tag">${d.plate_number || "NO PLATE"}</span></td>
-          <td style="text-transform: capitalize;">${d.vehicle_type || "Car"}</td>
+          <td><span class="plate-tag">${App.ui.escapeHtml(d.plate_number || "NO PLATE")}</span></td>
+          <td style="text-transform: capitalize;">${App.ui.escapeHtml(d.vehicle_type || "Car")}</td>
           <td>${Math.round((d.confidence_vehicle || 0.95) * 100)}%</td>
           <td>${Math.round((d.confidence_plate || 0.92) * 100)}%</td>
-          <td>${d.camera_name || d.camera_id?.slice(0, 8) || "Sector Cam"}</td>
+          <td>${App.ui.escapeHtml(d.camera_name || d.camera_id?.slice(0, 8) || "Sector Cam")}</td>
           <td><span class="source-tag ${d.is_demo !== false ? 'source-demo' : 'source-live'}"><span class="dot"></span> ${d.is_demo !== false ? 'DEMO' : 'LIVE'}</span></td>
         </tr>
       `).join("");
@@ -870,11 +881,11 @@ const App = {
       row.style.background = "rgba(6, 182, 212, 0.1)";
       row.innerHTML = `
         <td style="font-family: var(--font-mono); font-size: 11px;">${App.ui.formatTime(d.detected_at || new Date().toISOString())}</td>
-        <td><span class="plate-badge" style="border-color: var(--cyan-primary);">${d.plate_number || "NO PLATE"}</span></td>
-        <td style="text-transform: capitalize;">${d.vehicle_type || "Car"}</td>
+        <td><span class="plate-badge" style="border-color: var(--cyan-primary);">${App.ui.escapeHtml(d.plate_number || "NO PLATE")}</span></td>
+        <td style="text-transform: capitalize;">${App.ui.escapeHtml(d.vehicle_type || "Car")}</td>
         <td>${Math.round((d.confidence_vehicle || 0.95) * 100)}%</td>
         <td>${Math.round((d.confidence_plate || 0.92) * 100)}%</td>
-        <td>${d.camera_name || "Live Node"}</td>
+        <td>${App.ui.escapeHtml(d.camera_name || "Live Node")}</td>
         <td><span class="badge-pill mode-demo" style="font-size: 9px;">LIVE-WS</span></td>
       `;
       tbody.insertBefore(row, tbody.firstChild);
@@ -899,12 +910,12 @@ const App = {
         const sel = document.getElementById("entry-create-watchlist-id");
         if (sel) {
           sel.innerHTML = '<option value="">Select Watchlist...</option>' + watchlists.map((w) => `
-            <option value="${w.id}">${w.name} (${w.category})</option>
+            <option value="${App.ui.escapeHtml(w.id)}">${App.ui.escapeHtml(w.name)} (${App.ui.escapeHtml(w.category)})</option>
           `).join("");
         }
       } catch (e) {
         document.getElementById("watchlists-table-tbody").innerHTML = `
-          <tr><td colspan="6" style="text-align: center; color: var(--sev-critical);">Failed to load watchlists: ${e.message}</td></tr>
+          <tr><td colspan="6" style="text-align: center; color: var(--sev-critical);">Failed to load watchlists: ${App.ui.escapeHtml(e.message)}</td></tr>
         `;
       }
     },
@@ -918,13 +929,13 @@ const App = {
 
       tbody.innerHTML = watchlists.map((w) => `
         <tr>
-          <td><strong style="color: #fff;">${w.name}</strong></td>
-          <td><span class="badge-pill" style="background: rgba(59, 130, 246, 0.2); color: var(--blue-primary); font-size: 9px;">${w.category}</span></td>
-          <td><span class="badge-pill" style="background: rgba(239, 68, 68, 0.2); color: var(--sev-critical); font-size: 9px;">${w.severity}</span></td>
+          <td><strong style="color: var(--text-primary);">${App.ui.escapeHtml(w.name)}</strong></td>
+          <td><span class="badge-pill" style="background: rgba(59, 130, 246, 0.2); color: var(--blue-primary); font-size: 9px;">${App.ui.escapeHtml(w.category)}</span></td>
+          <td><span class="badge-pill" style="background: rgba(239, 68, 68, 0.2); color: var(--sev-critical); font-size: 9px;">${App.ui.escapeHtml(w.severity)}</span></td>
           <td><span style="color: var(--status-live); font-weight: 700;">${w.is_active ? "ACTIVE" : "INACTIVE"}</span></td>
-          <td>${w.entry_count !== undefined ? w.entry_count : (w.entries?.length || 1)} targets</td>
+          <td>${w.entry_count ?? w.entries?.length ?? 0} targets</td>
           <td>
-            <button class="btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="App.watchlists.viewEntries('${w.id}')">Inspect Entries</button>
+            <button class="btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="App.watchlists.viewEntries('${App.ui.escapeHtml(w.id)}')">Inspect Entries</button>
           </td>
         </tr>
       `).join("");
@@ -1003,18 +1014,18 @@ const App = {
 
       tbody.innerHTML = alerts.map((a) => `
         <tr>
-          <td><span class="badge-pill" style="background: rgba(239, 68, 68, 0.2); color: var(--sev-critical); font-size: 10px;">${a.severity}</span></td>
-          <td><span class="plate-badge" style="border-color: var(--sev-critical);">${a.plate_number}</span></td>
+          <td><span class="badge-pill" style="background: rgba(239, 68, 68, 0.2); color: var(--sev-critical); font-size: 10px;">${App.ui.escapeHtml(a.severity)}</span></td>
+          <td><span class="plate-badge" style="border-color: var(--sev-critical);">${App.ui.escapeHtml(a.plate_number)}</span></td>
           <td>
             <span class="badge-pill" style="${a.status === 'NEW' ? 'background: #7f1d1d; color: #fca5a5;' : 'background: #14532d; color: #86efac;'} font-size: 9px;">
-              ${a.status}
+              ${App.ui.escapeHtml(a.status)}
             </span>
           </td>
-          <td>${a.camera_id ? a.camera_id.slice(0, 8) : "Edge Camera"}</td>
+          <td>${App.ui.escapeHtml(a.camera_id ? a.camera_id.slice(0, 8) : "Edge Camera")}</td>
           <td style="font-family: var(--font-mono); font-size: 11px;">${App.ui.formatTime(a.created_at)}</td>
           <td>
-            ${a.status === 'NEW' ? `<button class="btn-primary" style="padding: 2px 8px; font-size: 10px;" onclick="App.alerts.acknowledge('${a.id}')">Acknowledge</button>` : ''}
-            ${a.status !== 'RESOLVED' ? `<button class="btn-secondary" style="padding: 2px 8px; font-size: 10px; margin-left: 4px;" onclick="App.alerts.resolve('${a.id}')">Resolve</button>` : '<span style="color: var(--status-live); font-size: 11px;">✓ Resolved</span>'}
+            ${a.status === 'NEW' ? `<button class="btn-primary" style="padding: 2px 8px; font-size: 10px;" onclick="App.alerts.acknowledge('${App.ui.escapeHtml(a.id)}')">Acknowledge</button>` : ''}
+            ${a.status !== 'RESOLVED' ? `<button class="btn-secondary" style="padding: 2px 8px; font-size: 10px; margin-left: 4px;" onclick="App.alerts.resolve('${App.ui.escapeHtml(a.id)}')">Resolve</button>` : '<span style="color: var(--status-live); font-size: 11px;">✓ Resolved</span>'}
           </td>
         </tr>
       `).join("");
@@ -1064,12 +1075,12 @@ const App = {
       const row = document.createElement("tr");
       row.style.background = "rgba(239, 68, 68, 0.15)";
       row.innerHTML = `
-        <td><span class="badge-pill" style="background: rgba(239, 68, 68, 0.3); color: var(--sev-critical); font-size: 10px;">${a.severity || "CRITICAL"}</span></td>
-        <td><span class="plate-badge" style="border-color: var(--sev-critical);">${a.plate_number}</span></td>
+        <td><span class="badge-pill" style="background: rgba(239, 68, 68, 0.3); color: var(--sev-critical); font-size: 10px;">${App.ui.escapeHtml(a.severity || "CRITICAL")}</span></td>
+        <td><span class="plate-badge" style="border-color: var(--sev-critical);">${App.ui.escapeHtml(a.plate_number)}</span></td>
         <td><span class="badge-pill" style="background: #7f1d1d; color: #fca5a5; font-size: 9px;">NEW</span></td>
-        <td>${a.camera_id ? a.camera_id.slice(0, 8) : "Realtime Node"}</td>
+        <td>${App.ui.escapeHtml(a.camera_id ? a.camera_id.slice(0, 8) : "Realtime Node")}</td>
         <td style="font-family: var(--font-mono); font-size: 11px;">${App.ui.formatTime(new Date().toISOString())}</td>
-        <td><button class="btn-primary" style="padding: 2px 8px; font-size: 10px;" onclick="App.alerts.acknowledge('${a.id}')">Acknowledge</button></td>
+        <td><button class="btn-primary" style="padding: 2px 8px; font-size: 10px;" onclick="App.alerts.acknowledge('${App.ui.escapeHtml(a.id)}')">Acknowledge</button></td>
       `;
       tbody.insertBefore(row, tbody.firstChild);
     },
@@ -1101,14 +1112,14 @@ const App = {
 
       tbody.innerHTML = items.map((inv) => `
         <tr>
-          <td><strong style="color: var(--blue-primary); font-family: var(--font-mono);">${inv.case_number}</strong></td>
-          <td><strong style="color: var(--text-primary);">${inv.title}</strong></td>
-          <td>${inv.target_plate ? `<span class="plate-tag">${inv.target_plate}</span>` : '<span style="color: var(--text-muted);">None</span>'}</td>
-          <td><span class="status-chip chip-demo"><span class="dot"></span> ${inv.status}</span></td>
-          <td>${inv.lead_detective_name || inv.lead_detective_id?.slice(0, 8) || "Detective"}</td>
+          <td><strong style="color: var(--blue-primary); font-family: var(--font-mono);">${App.ui.escapeHtml(inv.case_number)}</strong></td>
+          <td><strong style="color: var(--text-primary);">${App.ui.escapeHtml(inv.title)}</strong></td>
+          <td>${inv.target_plate ? `<span class="plate-tag">${App.ui.escapeHtml(inv.target_plate)}</span>` : '<span style="color: var(--text-muted);">None</span>'}</td>
+          <td><span class="status-chip chip-demo"><span class="dot"></span> ${App.ui.escapeHtml(inv.status)}</span></td>
+          <td>${App.ui.escapeHtml(inv.lead_detective_name || inv.lead_detective_id?.slice(0, 8) || "Detective")}</td>
           <td style="font-family: var(--font-mono); font-size: 11px;">${App.ui.formatTime(inv.created_at)}</td>
           <td>
-            <button class="btn-secondary" style="padding: 3px 10px; font-size: 11px;" onclick="App.investigations.inspectCase('${inv.id}')">Open Case File</button>
+            <button class="btn-secondary" style="padding: 3px 10px; font-size: 11px;" onclick="App.investigations.inspectCase('${App.ui.escapeHtml(inv.id)}')">Open Case File</button>
           </td>
         </tr>
       `).join("");
@@ -1216,11 +1227,11 @@ const App = {
 
       tbody.innerHTML = items.map((u) => `
         <tr>
-          <td><strong style="color: var(--cyan-primary); font-family: var(--font-mono);">${u.badge_number}</strong></td>
-          <td><strong style="color: #fff;">${u.full_name}</strong></td>
-          <td>${u.email}</td>
-          <td><span class="user-role-chip role-${(u.role_name || u.role || '').toLowerCase()}">${u.role_name || u.role || "Operator"}</span></td>
-          <td>${u.department_name || u.department_code || "State HQ"}</td>
+          <td><strong style="color: var(--cyan-primary); font-family: var(--font-mono);">${App.ui.escapeHtml(u.badge_number)}</strong></td>
+          <td><strong style="color: #fff;">${App.ui.escapeHtml(u.full_name)}</strong></td>
+          <td>${App.ui.escapeHtml(u.email)}</td>
+          <td><span class="user-role-chip role-${App.ui.escapeHtml((u.role_name || u.role || '').toLowerCase())}">${App.ui.escapeHtml(u.role_name || u.role || "Operator")}</span></td>
+          <td>${App.ui.escapeHtml(u.department_name || u.department_code || "State HQ")}</td>
           <td><span style="color: var(--status-live); font-weight: 700;">${u.is_active ? "ACTIVE" : "DEACTIVATED"}</span></td>
         </tr>
       `).join("");
@@ -1231,6 +1242,16 @@ const App = {
   // 15. UI Helpers, Modals & Toasts
   // ------------------------------------------------------------------------
   ui: {
+    escapeHtml(val) {
+      if (val === null || val === undefined) return "";
+      return String(val)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    },
+
     updateAuthUI() {
       const user = App.state.user;
       const userBadge = document.getElementById("user-badge-container");

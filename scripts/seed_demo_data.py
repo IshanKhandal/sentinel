@@ -172,6 +172,7 @@ def seed_demo_environment(db: Session) -> dict:
             db.add(loc)
             db.flush()
 
+        target_status = "DEMO" if spec["lat"] is not None else "OFFLINE"
         cam = db.query(Camera).filter_by(name=spec["cam_name"]).first()
         if not cam:
             cam = Camera(
@@ -181,10 +182,14 @@ def seed_demo_environment(db: Session) -> dict:
                 location_id=loc.id,
                 rtsp_url=spec["rtsp"],
                 stream_type=spec["stream_type"],
-                status="DEMO" if spec["lat"] is not None else "OFFLINE",
+                status=target_status,
             )
             db.add(cam)
             db.flush()
+        else:
+            if cam.status != target_status:
+                cam.status = target_status
+                db.flush()
         cameras[spec["cam_name"]] = cam
     db.commit()
 
@@ -202,6 +207,8 @@ def seed_demo_environment(db: Session) -> dict:
         db.add(watchlist)
         db.flush()
 
+    entry = db.query(WatchlistEntry).filter_by(watchlist_id=watchlist.id, plate_number="GJ01AB1234").first()
+    if not entry:
         entry = WatchlistEntry(
             id=uuid.uuid4(),
             watchlist_id=watchlist.id,
@@ -213,23 +220,25 @@ def seed_demo_environment(db: Session) -> dict:
         )
         db.add(entry)
         db.commit()
-    else:
-        entry = db.query(WatchlistEntry).filter_by(watchlist_id=watchlist.id, plate_number="GJ01AB1234").first()
 
     # 6. Demonstration Vehicle Observations (GJ01AB1234 cross-camera journey)
     now = datetime.now(timezone.utc)
     target_plate = "GJ01AB1234"
 
-    existing_detections = db.query(Detection).filter_by(plate_number=target_plate).all()
-    if not existing_detections:
-        cams_seq = [
-            (cameras["CAM-AMD-SG01"], now - timedelta(minutes=30)),
-            (cameras["CAM-AMD-IS02"], now - timedelta(minutes=20)),
-            (cameras["CAM-GND-SC01"], now - timedelta(minutes=5)),
-        ]
+    cams_seq = [
+        (cameras["CAM-AMD-SG01"], now - timedelta(minutes=30)),
+        (cameras["CAM-AMD-IS02"], now - timedelta(minutes=20)),
+        (cameras["CAM-GND-SC01"], now - timedelta(minutes=5)),
+    ]
 
-        detections = []
-        for cam, obs_time in cams_seq:
+    detections = []
+    for cam, obs_time in cams_seq:
+        det = db.query(Detection).filter_by(
+            camera_id=cam.id,
+            plate_number=target_plate,
+            is_demo=True,
+        ).first()
+        if not det:
             det = Detection(
                 id=uuid.uuid4(),
                 camera_id=cam.id,
@@ -244,24 +253,34 @@ def seed_demo_environment(db: Session) -> dict:
                 is_demo=True,
             )
             db.add(det)
-            detections.append(det)
-        db.commit()
+            db.flush()
+        detections.append(det)
+    db.commit()
 
-        # 7. Create Alert for the match
-        alert = Alert(
-            id=uuid.uuid4(),
+    # 7. Create Alert for the match if not exists
+    last_det = detections[-1] if detections else None
+    if last_det and entry:
+        alert = db.query(Alert).filter_by(
             watchlist_entry_id=entry.id,
-            detection_id=detections[-1].id,
-            camera_id=cameras["CAM-GND-SC01"].id,
             plate_number=target_plate,
-            severity="CRITICAL",
-            status="NEW",
-            created_at=now - timedelta(minutes=4),
-        )
-        db.add(alert)
-        db.commit()
+        ).first()
+        if not alert:
+            alert = Alert(
+                id=uuid.uuid4(),
+                watchlist_entry_id=entry.id,
+                detection_id=last_det.id,
+                camera_id=cameras["CAM-GND-SC01"].id,
+                plate_number=target_plate,
+                severity="CRITICAL",
+                status="NEW",
+                created_at=now - timedelta(minutes=4),
+            )
+            db.add(alert)
+            db.commit()
 
-        # 8. Investigation Case
+    # 8. Investigation Case if not exists
+    inv = db.query(Investigation).filter_by(case_number="INV-2026-0042").first()
+    if not inv:
         inv = Investigation(
             id=uuid.uuid4(),
             case_number="INV-2026-0042",
@@ -274,16 +293,22 @@ def seed_demo_environment(db: Session) -> dict:
         db.add(inv)
         db.flush()
 
-        # Attach last observation as event
-        inv_event = InvestigationEvent(
-            id=uuid.uuid4(),
+    # Attach last observation as event if not already attached
+    if last_det and inv:
+        inv_event = db.query(InvestigationEvent).filter_by(
             investigation_id=inv.id,
-            detection_id=detections[-1].id,
-            sequence_order=1,
-            notes="Vehicle positively identified passing Gandhinagar Secretariat surveillance point.",
-        )
-        db.add(inv_event)
-        db.commit()
+            detection_id=last_det.id,
+        ).first()
+        if not inv_event:
+            inv_event = InvestigationEvent(
+                id=uuid.uuid4(),
+                investigation_id=inv.id,
+                detection_id=last_det.id,
+                sequence_order=1,
+                notes="Vehicle positively identified passing Gandhinagar Secretariat surveillance point.",
+            )
+            db.add(inv_event)
+            db.commit()
 
     # 9. Audit Log for demo seeding
     audit_init = db.query(AuditLog).filter_by(action="SYSTEM_INIT_DEMO").first()

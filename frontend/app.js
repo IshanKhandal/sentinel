@@ -139,15 +139,21 @@ const App = {
 
       // Check stored JWT token
       if (App.state.token) {
+        const initToken = App.state.token;
         try {
           const user = await App.api.get("/api/v1/auth/me");
-          App.state.user = user;
-          App.ui.updateAuthUI();
-          App.ws.connect();
+          if (initToken === App.state.token) {
+            App.state.user = user;
+            App.ui.updateAuthUI();
+            App.ws.connect();
+          }
         } catch (e) {
-          App.state.token = null;
-          sessionStorage.removeItem("sentinel_token");
-          App.ui.updateAuthUI();
+          if (initToken === App.state.token) {
+            App.state.token = null;
+            App.state.user = null;
+            sessionStorage.removeItem("sentinel_token");
+            App.ui.updateAuthUI();
+          }
         }
       } else {
         App.ui.updateAuthUI();

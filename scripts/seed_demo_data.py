@@ -8,6 +8,7 @@ Protocol Standards:
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import SessionLocal
@@ -171,8 +172,13 @@ def seed_demo_environment(db: Session) -> dict:
             )
             db.add(loc)
             db.flush()
+        else:
+            if loc.latitude != spec["lat"] or loc.longitude != spec["lon"]:
+                loc.latitude = spec["lat"]
+                loc.longitude = spec["lon"]
+                db.flush()
 
-        target_status = "DEMO" if spec["lat"] is not None else "OFFLINE"
+        target_status = "DEMO" if (loc.latitude is not None and loc.longitude is not None) else "OFFLINE"
         cam = db.query(Camera).filter_by(name=spec["cam_name"]).first()
         if not cam:
             cam = Camera(
@@ -233,11 +239,16 @@ def seed_demo_environment(db: Session) -> dict:
 
     detections = []
     for cam, obs_time in cams_seq:
-        det = db.query(Detection).filter_by(
-            camera_id=cam.id,
-            plate_number=target_plate,
-            is_demo=True,
-        ).first()
+        det = (
+            db.query(Detection)
+            .filter_by(
+                camera_id=cam.id,
+                plate_number=target_plate,
+                is_demo=True,
+            )
+            .order_by(Detection.detected_at.desc(), Detection.id.desc())
+            .first()
+        )
         if not det:
             det = Detection(
                 id=uuid.uuid4(),
@@ -279,8 +290,10 @@ def seed_demo_environment(db: Session) -> dict:
             db.commit()
 
     # 8. Investigation Case if not exists
+    is_new_inv = False
     inv = db.query(Investigation).filter_by(case_number="INV-2026-0042").first()
     if not inv:
+        is_new_inv = True
         inv = Investigation(
             id=uuid.uuid4(),
             case_number="INV-2026-0042",
@@ -300,11 +313,19 @@ def seed_demo_environment(db: Session) -> dict:
             detection_id=last_det.id,
         ).first()
         if not inv_event:
+            if is_new_inv:
+                seq_order = 1
+            else:
+                max_seq = db.query(func.max(InvestigationEvent.sequence_order)).filter_by(
+                    investigation_id=inv.id
+                ).scalar()
+                seq_order = (max_seq or 0) + 1
+
             inv_event = InvestigationEvent(
                 id=uuid.uuid4(),
                 investigation_id=inv.id,
                 detection_id=last_det.id,
-                sequence_order=1,
+                sequence_order=seq_order,
                 notes="Vehicle positively identified passing Gandhinagar Secretariat surveillance point.",
             )
             db.add(inv_event)

@@ -31,8 +31,9 @@ const App = {
   api: {
     async request(endpoint, options = {}) {
       const headers = options.headers || {};
-      if (App.state.token) {
-        headers["Authorization"] = `Bearer ${App.state.token}`;
+      const requestToken = App.state.token;
+      if (requestToken) {
+        headers["Authorization"] = `Bearer ${requestToken}`;
       }
       if (options.body && typeof options.body === "object" && !(options.body instanceof FormData)) {
         headers["Content-Type"] = "application/json";
@@ -47,14 +48,16 @@ const App = {
             const errData = await response.json().catch(() => ({ detail: "Invalid credentials" }));
             throw new Error(errData.detail || "Invalid credentials");
           }
-          // Token expired or invalid
-          App.state.token = null;
-          App.state.user = null;
-          sessionStorage.removeItem("sentinel_token");
-          App.ws.disconnect();
-          App.ui.updateAuthUI();
-          App.ui.showToast("Session expired or unauthorized. Please authenticate.", "error");
-          App.ui.showLoginModal();
+          // Token expired or invalid - clear session only if the request's token is still the active token
+          if (requestToken === App.state.token) {
+            App.state.token = null;
+            App.state.user = null;
+            sessionStorage.removeItem("sentinel_token");
+            App.ws.disconnect();
+            App.ui.updateAuthUI();
+            App.ui.showToast("Session expired or unauthorized. Please authenticate.", "error");
+            App.ui.showLoginModal();
+          }
           throw new Error("Unauthorized (401)");
         }
         if (response.status === 403) {
